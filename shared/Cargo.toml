@@ -1,0 +1,9 @@
+[package]
+name = "minimal_shared"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.16.1", features = ["bevy_render", "bevy_core_pipeline", "bevy_winit", "bevy_window"] }
+lightyear = { version = "0.23.0", features = ["client", "server", "netcode", "replication", "udp"] }
+serde = { version = "1.0.219", features = ["derive"] }

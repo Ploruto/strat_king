@@ -1,0 +1,32 @@
+use bevy::prelude::*;
+use core::net::{IpAddr, Ipv4Addr, SocketAddr};
+use core::time::Duration;
+use lightyear::prelude::*;
+use serde::{Deserialize, Serialize};
+
+pub const FIXED_TIMESTEP_HZ: f64 = 64.0;
+pub const SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 5000);
+pub const SERVER_REPLICATION_INTERVAL: Duration = Duration::from_millis(100);
+
+mod gameplay;
+
+#[derive(Clone)]
+pub struct SharedPlugin;
+
+pub struct Channel1;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PingMessage(pub String);
+
+impl Plugin for SharedPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_message::<PingMessage>()
+            .add_direction(NetworkDirection::Bidirectional);
+
+        app.add_channel::<Channel1>(ChannelSettings {
+            mode: ChannelMode::OrderedReliable(ReliableSettings::default()),
+            ..default()
+        })
+        .add_direction(NetworkDirection::Bidirectional);
+    }
+}
