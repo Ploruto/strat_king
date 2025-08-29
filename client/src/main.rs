@@ -3,7 +3,7 @@ use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use lightyear::netcode::Key;
 use lightyear::prelude::client::*;
 use lightyear::prelude::*;
-use minimal_shared::*;
+use shared::*;
 
 const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 4000);
 

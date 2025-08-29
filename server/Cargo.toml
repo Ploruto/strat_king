@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.99"
 bevy = { version = "0.16.1", default-features = false }
+bevy_common_assets = { version = "0.13.0", features = ["ron"] }
 lightyear = { version = "0.23.0", features = ["server", "netcode", "replication", "udp"] }
 shared = { version = "0.1.0", path = "../shared" }

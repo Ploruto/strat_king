@@ -1,9 +1,10 @@
 use bevy::prelude::*;
+use bevy_common_assets::ron::RonAssetPlugin;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
 use shared::*;
 
-use crate::map_init::{MapInitPlugin, CurrentMap};
+use crate::map_init::{CurrentMap, MapInitPlugin};
 use shared::gameplay::map::MapDefinition;
 
 mod map_init;
@@ -28,6 +29,7 @@ pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<MapDefinition>();
+        app.add_plugins(RonAssetPlugin::<MapDefinition>::new(&[".ron"]));
         app.add_systems(Startup, (startup, load_map_asset));
         app.add_observer(handle_new_client);
         app.add_systems(Update, handle_ping_message);
