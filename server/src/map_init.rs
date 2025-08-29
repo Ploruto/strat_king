@@ -88,7 +88,7 @@ fn spawn_structure(
             position: structure_def.pos,
         },
         Transform::from_translation(structure_def.pos.extend(0.0)),
-        // Replicate::to_clients(NetworkTarget::All),
+        Replicate::to_clients(NetworkTarget::All),
     ));
 
     match &structure_def.structure_type {
@@ -132,7 +132,7 @@ fn spawn_path(
                 waypoints: path_def.waypoints.clone(),
                 width: path_def.width,
             },
-            // Replicate::to_clients(NetworkTarget::All),
+            Replicate::to_clients(NetworkTarget::All),
         ))
         .id()
 }
