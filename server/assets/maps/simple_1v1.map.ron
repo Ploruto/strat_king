@@ -1,0 +1,85 @@
+MapDefinition(
+    name: "Simple 1v1 Arena",
+    structures: [
+        // Player 1 base (left side)
+        StructureDefinition(
+            id: 0,
+            pos: Vec2(-400.0, 0.0),
+            structure_type: Base(team: 0),
+        ),
+        // Player 2 base (right side)
+        StructureDefinition(
+            id: 1,
+            pos: Vec2(400.0, 0.0),
+            structure_type: Base(team: 1),
+        ),
+        // Central neutral tower
+        StructureDefinition(
+            id: 2,
+            pos: Vec2(0.0, 0.0),
+            structure_type: Tower(team: None),
+        ),
+        // Side tower (top)
+        StructureDefinition(
+            id: 3,
+            pos: Vec2(0.0, 200.0),
+            structure_type: Tower(team: None),
+        ),
+        // Side tower (bottom)
+        StructureDefinition(
+            id: 4,
+            pos: Vec2(0.0, -200.0),
+            structure_type: Tower(team: None),
+        ),
+    ],
+    paths: [
+        // Player 1 base to center
+        PathDefinition(
+            id: 0,
+            structure_a: 0,
+            structure_b: 2,
+            waypoints: [Vec2(-300.0, 0.0), Vec2(-150.0, 0.0), Vec2(-50.0, 0.0)],
+            width: 60.0,
+        ),
+        // Player 2 base to center
+        PathDefinition(
+            id: 1,
+            structure_a: 1,
+            structure_b: 2,
+            waypoints: [Vec2(300.0, 0.0), Vec2(150.0, 0.0), Vec2(50.0, 0.0)],
+            width: 60.0,
+        ),
+        // Center to top tower
+        PathDefinition(
+            id: 2,
+            structure_a: 2,
+            structure_b: 3,
+            waypoints: [Vec2(0.0, 50.0), Vec2(0.0, 100.0), Vec2(0.0, 150.0)],
+            width: 50.0,
+        ),
+        // Center to bottom tower
+        PathDefinition(
+            id: 3,
+            structure_a: 2,
+            structure_b: 4,
+            waypoints: [Vec2(0.0, -50.0), Vec2(0.0, -100.0), Vec2(0.0, -150.0)],
+            width: 50.0,
+        ),
+        // Player 1 base to top tower (flanking route)
+        PathDefinition(
+            id: 4,
+            structure_a: 0,
+            structure_b: 3,
+            waypoints: [Vec2(-300.0, 50.0), Vec2(-200.0, 100.0), Vec2(-100.0, 150.0), Vec2(-50.0, 200.0)],
+            width: 45.0,
+        ),
+        // Player 2 base to bottom tower (flanking route)
+        PathDefinition(
+            id: 5,
+            structure_a: 1,
+            structure_b: 4,
+            waypoints: [Vec2(300.0, -50.0), Vec2(200.0, -100.0), Vec2(100.0, -150.0), Vec2(50.0, -200.0)],
+            width: 45.0,
+        ),
+    ],
+)

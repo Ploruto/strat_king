@@ -1,5 +1,5 @@
 [package]
-name = "minimal_server"
+name = "strat_king_server"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,4 +7,4 @@ edition = "2024"
 anyhow = "1.0.99"
 bevy = { version = "0.16.1", default-features = false }
 lightyear = { version = "0.23.0", features = ["server", "netcode", "replication", "udp"] }
-minimal_shared = { version = "0.1.0", path = "../shared" }
+shared = { version = "0.1.0", path = "../shared" }

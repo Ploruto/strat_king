@@ -2,7 +2,7 @@ use crate::gameplay::map::TeamId;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Serialize, Deserialize, Clone)]
+#[derive(Component, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TowerStats {
     level: u8,                // 1
     max_mana: u8,             // 30
@@ -43,7 +43,7 @@ impl TowerStats {
 #[derive(Component)]
 pub struct BaseTowerMarker;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tower {
     pub mana: u8,
     pub owner: Option<TeamId>,

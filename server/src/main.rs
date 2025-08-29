@@ -1,7 +1,12 @@
 use bevy::prelude::*;
 use lightyear::prelude::server::*;
 use lightyear::prelude::*;
-use minimal_shared::*;
+use shared::*;
+
+use crate::map_init::{MapInitPlugin, CurrentMap};
+use shared::gameplay::map::MapDefinition;
+
+mod map_init;
 
 fn main() {
     let mut app = App::new();
@@ -22,9 +27,11 @@ pub struct ServerPlugin;
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup);
+        app.init_asset::<MapDefinition>();
+        app.add_systems(Startup, (startup, load_map_asset));
         app.add_observer(handle_new_client);
         app.add_systems(Update, handle_ping_message);
+        app.add_plugins(MapInitPlugin);
     }
 }
 
@@ -50,6 +57,12 @@ fn startup(mut commands: Commands) {
         ))
         .id();
     commands.trigger_targets(Start, server);
+}
+
+fn load_map_asset(mut commands: Commands, asset_server: Res<AssetServer>) {
+    info!("Loading map asset...");
+    let map_handle: Handle<MapDefinition> = asset_server.load("maps/simple_1v1.map.ron");
+    commands.insert_resource(CurrentMap(map_handle));
 }
 
 fn handle_ping_message(

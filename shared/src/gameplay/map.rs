@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use lightyear::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -33,6 +34,27 @@ pub struct PathDefinition {
     pub structure_b: StructureId,
     pub waypoints: Vec<Vec2>,
     pub width: f32,
+}
+
+// Runtime ECS components (shared between client and server)
+#[derive(Component, Serialize, Deserialize, Clone, PartialEq)]
+pub struct GamePath {
+    pub definition_id: PathId,
+    pub structure_a: Entity,
+    pub structure_b: Entity,
+    pub waypoints: Vec<Vec2>,
+    pub width: f32,
+}
+
+#[derive(Component, Serialize, Deserialize, Clone, PartialEq)]
+pub struct GameStructure {
+    pub definition_id: StructureId,
+    pub position: Vec2,
+}
+
+#[derive(Component, Serialize, Deserialize, Clone, PartialEq)]
+pub struct StructureConnections {
+    pub connected_paths: Vec<Entity>,
 }
 
 impl MapDefinition {
