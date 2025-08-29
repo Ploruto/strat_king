@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub type StructureId = u8;
 pub type PathId = u8;
@@ -15,7 +16,7 @@ pub struct MapDefinition {
 #[derive(Serialize, Deserialize, Clone)]
 pub enum StructureType {
     Base { team: TeamId },
-    Tower,
+    Tower { team: Option<TeamId> },
 }
 
 #[derive(Serialize, Deserialize, Clone)]
