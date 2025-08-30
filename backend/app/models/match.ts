@@ -5,7 +5,11 @@ export default class Match extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
-  @column()
+  @column({
+    serialize: (value: number[]) => JSON.stringify(value),
+    prepare: (value: number[]) => JSON.stringify(value),
+    consume: (value: string) => JSON.parse(value)
+  })
   declare playerIds: number[]
 
   @column()

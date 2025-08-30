@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import MatchmakingQueue from '#models/matchmaking_queue'
 import Player from '#models/player'
+import Match from '#models/match'
 import hash from '@adonisjs/core/services/hash'
 
 test.group('Basic Matchmaking', (group) => {
@@ -63,20 +64,29 @@ test.group('Basic Matchmaking', (group) => {
 
     response1.assertStatus(200)
 
-    // Second join
+    // Verify first entry is in queue
+    let queueEntries = await MatchmakingQueue.all()
+    assert.lengthOf(queueEntries, 1)
+    assert.equal(queueEntries[0].playerId, player.id)
+
+    // Second join - this should create a match since same player counts as 2
     const response2 = await client
       .post('/matchmaking/join')
       .header('Authorization', `Bearer ${token.value!.release()}`)
 
     response2.assertStatus(200)
 
-    const queueEntries = await MatchmakingQueue.all()
-    assert.lengthOf(queueEntries, 2)
-    assert.equal(queueEntries[0].playerId, player.id)
-    assert.equal(queueEntries[1].playerId, player.id)
+    // After 2 joins from same player, should create match and clear queue
+    queueEntries = await MatchmakingQueue.all()
+    assert.lengthOf(queueEntries, 0)
+    
+    // Verify match was created
+    const matches = await Match.all()
+    assert.lengthOf(matches, 1)
+    assert.include(matches[0].playerIds, player.id)
   })
 
-  test('should allow multiple different players to join queue', async ({ client, assert }) => {
+  test('should create match when two different players join queue', async ({ client, assert }) => {
     const player1 = await Player.create({
       username: 'multiplayer1',
       passwordHash: await hash.make('password123')
@@ -97,19 +107,30 @@ test.group('Basic Matchmaking', (group) => {
 
     response1.assertStatus(200)
 
-    // Second player joins
+    // Verify first player is in queue
+    let queueEntries = await MatchmakingQueue.all()
+    assert.lengthOf(queueEntries, 1)
+    assert.equal(queueEntries[0].playerId, player1.id)
+
+    // Second player joins - should trigger match creation
     const response2 = await client
       .post('/matchmaking/join')
       .header('Authorization', `Bearer ${token2.value!.release()}`)
 
     response2.assertStatus(200)
 
-    const queueEntries = await MatchmakingQueue.all()
-    assert.lengthOf(queueEntries, 2)
+    // After match creation, queue should be empty
+    queueEntries = await MatchmakingQueue.all()
+    assert.lengthOf(queueEntries, 0)
     
-    const playerIds = queueEntries.map(entry => entry.playerId).sort()
-    const expectedIds = [player1.id, player2.id].sort()
-    assert.deepEqual(playerIds, expectedIds)
+    // Verify match was created with both players
+    const matches = await Match.all()
+    assert.lengthOf(matches, 1)
+    
+    const match = matches[0]
+    assert.lengthOf(match.playerIds, 2)
+    assert.include(match.playerIds, player1.id)
+    assert.include(match.playerIds, player2.id)
   })
 
   test('should create queue entry with correct data integrity', async ({ client, assert }) => {
