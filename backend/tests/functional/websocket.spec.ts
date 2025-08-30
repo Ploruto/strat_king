@@ -45,7 +45,7 @@ test.group('WebSocket', (group) => {
       // Step 2: Listen for server messages (should receive welcome message)
       ws.on('message', (data) => {
         const message = JSON.parse(data.toString())
-        
+
         // Step 3: Verify we received the expected connection success message
         if (message.type === 'connection_success') {
           clearTimeout(timeout)
@@ -88,24 +88,23 @@ test.group('WebSocket', (group) => {
       // Step 2: Handle all messages from server (event-driven, non-linear flow)
       ws.on('message', (data) => {
         const message = JSON.parse(data.toString())
-        console.log(message)
 
         // First message: Server sends welcome message after successful connection
         if (message.type === 'connection_success' && !connectionEstablished) {
           connectionEstablished = true
-          
+
           // Step 3: Send our test message to the server
           const testMessage = { type: 'test', content: 'Hello WebSocket!' }
           ws.send(JSON.stringify(testMessage))
-          
+
         // Second message: Server echoes back our test message
         } else if (message.type === 'echo') {
           clearTimeout(timeout)
-          
+
           // Step 4: Verify the echo contains our original message
           assert.isObject(message.data.received, 'Should receive echoed message')
           assert.equal(message.data.received.content, 'Hello WebSocket!')
-          
+
           ws.close()
           resolve() // Test passes
         }
