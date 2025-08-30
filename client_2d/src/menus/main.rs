@@ -15,21 +15,32 @@ fn spawn_main_menu(mut commands: Commands) {
         StateScoped(Menu::Main),
         #[cfg(not(target_family = "wasm"))]
         children![
-            widget::button("Play", enter_loading_or_gameplay_screen),
+            widget::header("Strat King"),
+            widget::button("Online Play", enter_online_mode),
+            widget::button("Offline Play", enter_offline_mode),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
             widget::button("Exit", exit_app),
         ],
         #[cfg(target_family = "wasm")]
         children![
-            widget::button("Play", enter_loading_or_gameplay_screen),
+            widget::header("Strat King"),
+            widget::button("Online Play", enter_online_mode),
+            widget::button("Offline Play", enter_offline_mode),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
         ],
     ));
 }
 
-fn enter_loading_or_gameplay_screen(
+fn enter_online_mode(
+    _: Trigger<Pointer<Click>>,
+    mut next_screen: ResMut<NextState<Screen>>,
+) {
+    next_screen.set(Screen::Authentication);
+}
+
+fn enter_offline_mode(
     _: Trigger<Pointer<Click>>,
     resource_handles: Res<ResourceHandles>,
     mut next_screen: ResMut<NextState<Screen>>,

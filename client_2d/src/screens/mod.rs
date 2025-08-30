@@ -1,7 +1,10 @@
 //! The game's main screen states and transitions between them.
 
+mod authentication;
+mod connecting;
 mod gameplay;
 mod loading;
+mod matchmaking;
 mod splash;
 mod title;
 
@@ -11,8 +14,11 @@ pub(super) fn plugin(app: &mut App) {
     app.init_state::<Screen>();
 
     app.add_plugins((
+        authentication::plugin,
+        connecting::plugin,
         gameplay::plugin,
         loading::plugin,
+        matchmaking::plugin,
         splash::plugin,
         title::plugin,
     ));
@@ -26,5 +32,8 @@ pub enum Screen {
     Splash,
     Title,
     Loading,
+    Authentication,
+    Matchmaking,
+    Connecting,
     Gameplay,
 }
