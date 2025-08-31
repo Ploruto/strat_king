@@ -19,7 +19,7 @@ export default class Match extends BaseModel {
   declare playerIds: number[]
 
   @column()
-  declare status: 'pending' | 'active' | 'completed'
+  declare status: 'pending' | 'active' | 'completed' | 'spawning' | 'failed'
 
   @column()
   declare serverPort: number | null

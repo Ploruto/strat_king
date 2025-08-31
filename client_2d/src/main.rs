@@ -55,6 +55,7 @@ impl Plugin for AppPlugin {
             networking::plugin,
             screens::plugin,
             theme::plugin,
+            bevy_tokio_tasks::TokioTasksPlugin::default(),
         ));
 
         // Order new `AppSystems` variants by adding them here:

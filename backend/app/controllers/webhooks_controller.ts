@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Match from '#models/match'
 import { clients } from '#start/ws_init'
+import { ServerManager } from '#services/server_manager'
 
 export default class WebhooksController {
   async serverReady({ request, response }: HttpContext) {
@@ -52,6 +53,12 @@ export default class WebhooksController {
       
       // Update match status to completed
       await match.merge({ status: 'completed' }).save()
+
+      // Clean up the game server container
+      if (match.authToken) { // authToken stores the container ID
+        ServerManager.stopGameServer(match.authToken)
+          .catch(error => console.error('Failed to cleanup container:', error))
+      }
 
       // Notify players via WebSocket that match is complete
       for (const playerId of match.playerIds) {

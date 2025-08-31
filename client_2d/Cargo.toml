@@ -10,8 +10,8 @@ rand = "0.8"
 # Networking dependencies
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+reqwest = { version = "0.12", features = ["json"] }
 tokio-tungstenite = "0.24"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 # Lightyear for game networking (will add when integrating)
 # lightyear = "0.23"
 # Compile low-severity logs out of native builds for performance.
@@ -24,6 +24,8 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
+tokio = "1.47.1"
+bevy-tokio-tasks = "0.16.0"
 
 # Your web builds will start failing if you add a dependency that pulls in `getrandom` v0.3+.
 # To fix this, you should tell `getrandom` to use the `wasm_js` backend on Wasm.

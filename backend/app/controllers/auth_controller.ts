@@ -36,7 +36,9 @@ export default class AuthController {
   }
 
   async login({ request, response }: HttpContext) {
+    console.log("login")
     const { username, password } = request.only(['username', 'password'])
+    console.log(`received request with: ${username} ${password}`)
 
     const player = await Player.findBy('username', username)
     if (!player) {
