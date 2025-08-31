@@ -34,6 +34,12 @@ new Ignitor(APP_ROOT, { importer: IMPORTER })
     app.booting(async () => {
       await import('#start/env')
     })
+    app.ready(async () => {
+      // Start WebSocket server on port 3334 (separate from HTTP server)
+      const { createWebSocketServer } = await import('#start/ws_init')
+      createWebSocketServer(3334)
+      console.log('🔌 WebSocket server started on port 3334')
+    })
     app.listen('SIGTERM', () => app.terminate())
     app.listenIf(app.managedByPm2, 'SIGINT', () => app.terminate())
   })

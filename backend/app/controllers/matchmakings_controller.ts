@@ -9,7 +9,15 @@ export default class MatchmakingsController {
     await auth.authenticate()
     const player = auth.getUserOrFail()
 
-    console.log("player joined: ", player.id)
+    // Check if player is already in queue
+    const existingEntry = await MatchmakingQueue.query()
+      .where('playerId', player.id)
+      .where('gameMode', '1v1')
+      .first()
+
+    if (existingEntry) {
+      return { success: false, message: 'Already in queue' }
+    }
 
     await MatchmakingQueue.create({
       playerId: player.id,
@@ -25,6 +33,13 @@ export default class MatchmakingsController {
     if (queueEntries.length >= 2) {
       // Create match with the first 2 players
       const playerIds = queueEntries.map(entry => entry.playerId)
+      
+      // Ensure we don't match a player against themselves
+      const uniquePlayerIds = [...new Set(playerIds)]
+      if (uniquePlayerIds.length < 2) {
+        console.log('Cannot match - not enough unique players')
+        return { success: true }
+      }
 
       const match = await Match.create({
         playerIds: playerIds,

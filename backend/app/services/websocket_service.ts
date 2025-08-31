@@ -14,7 +14,7 @@ export default class WebSocketService {
   private clients: Map<number, AuthenticatedWebSocket> = new Map()
 
   public start(server: any) {
-    this.wss = new WebSocketServer({ 
+    this.wss = new WebSocketServer({
       server,
       path: '/ws'
     })
@@ -29,6 +29,7 @@ export default class WebSocketService {
       }
 
       try {
+        console.log("inside try logic of ws")
         const payload = jwt.verify(token, env.get('APP_KEY')) as { playerId: number }
         const player = await Player.find(payload.playerId)
 

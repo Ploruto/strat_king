@@ -68,15 +68,31 @@ fn join_queue(
                 let player_id = player_id.clone();
                 let server_url = networking_state.server_url.clone();
                 
-                // Join queue via HTTP
+                // First establish WebSocket connection, then join queue
                 runtime.spawn_background_task(|mut ctx| async move {
-                    match networking::join_queue("1v1", &player_id, &server_url, &auth_token).await {
-                        Ok(()) => {
-                            info!("Successfully joined queue");
-                            // TODO: Establish WebSocket connection for real-time updates
+                    // Connect to WebSocket first
+                    match networking::connect_websocket(&auth_token, &server_url).await {
+                        Ok(ws_stream) => {
+                            info!("WebSocket connected successfully");
+                            
+                            // Spawn a separate task to listen for WebSocket messages
+                            let ws_listener = tokio::spawn(async move {
+                                networking::listen_for_messages(ws_stream).await;
+                            });
+                            
+                            // Now join the queue
+                            match networking::join_queue("1v1", &player_id, &server_url, &auth_token).await {
+                                Ok(()) => {
+                                    info!("Successfully joined queue - listening for match updates");
+                                }
+                                Err(error) => {
+                                    error!("Failed to join queue: {}", error);
+                                    ws_listener.abort(); // Stop listening if queue join fails
+                                }
+                            }
                         }
                         Err(error) => {
-                            error!("Failed to join queue: {}", error);
+                            error!("Failed to connect WebSocket: {}", error);
                         }
                     }
                 });
@@ -121,17 +137,8 @@ fn handle_matchmaking_updates(
                 text.0 = format!("In queue... {:.1}s", status.queue_time);
             }
 
-            // Mock: simulate match found after 5 seconds
-            // TODO: Replace with real WebSocket message handling
-            if status.queue_time > 5.0 {
-                info!("Match found! Connecting to game server...");
-
-                // TODO: Receive game server connection info from WebSocket
-                // TODO: Create lightyear client connection
-
-                next_screen.set(Screen::Connecting);
-                break;
-            }
+            // Real match found handling will be done via WebSocket messages
+            // No more automatic scene switching
         }
     }
 }

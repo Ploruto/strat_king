@@ -26,6 +26,7 @@ tracing = { version = "0.1", features = [
 ] }
 tokio = "1.47.1"
 bevy-tokio-tasks = "0.16.0"
+futures-util = "0.3.31"
 
 # Your web builds will start failing if you add a dependency that pulls in `getrandom` v0.3+.
 # To fix this, you should tell `getrandom` to use the `wasm_js` backend on Wasm.

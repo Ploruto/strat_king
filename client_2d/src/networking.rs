@@ -164,9 +164,91 @@ pub async fn join_queue(
     }
 }
 
-// TODO: Implement WebSocket connection handling
-// pub async fn connect_websocket(auth_token: &str) -> Result<WebSocketStream, String> {
-//     let url = format!("ws://localhost:3000/matchmaking/ws?token={}", auth_token);
-//     let (ws_stream, _) = connect_async(url).await.map_err(|e| e.to_string())?;
-//     Ok(ws_stream)
-// }
+pub async fn connect_websocket(
+    auth_token: &str,
+    server_url: &str,
+) -> Result<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+    String,
+> {
+    let ws_url = server_url.replace("http://localhost:3333", "ws://localhost:3334");
+    let url = format!("{}/ws?token={}", ws_url, auth_token);
+
+    println!("Connecting to WebSocket: {}", url);
+
+    let (ws_stream, _response) = tokio_tungstenite::connect_async(&url)
+        .await
+        .map_err(|e| format!("WebSocket connection failed: {}", e))?;
+
+    Ok(ws_stream)
+}
+
+pub async fn listen_for_messages(
+    mut ws_stream: tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
+) {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+
+    while let Some(message) = ws_stream.next().await {
+        match message {
+            Ok(Message::Text(text)) => {
+                println!("WebSocket message received: {}", text);
+
+                // Parse the message using dynamic JSON parsing
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if let Some(msg_type) = parsed["type"].as_str() {
+                        match msg_type {
+                            "connection_success" => {
+                                if let Some(message) = parsed["data"]["message"].as_str() {
+                                    info!("WebSocket connected: {}", message);
+                                }
+                            }
+                            "match_found" => {
+                                if let Some(data) = parsed["data"].as_object() {
+                                    if let Some(match_id) = data["matchId"].as_i64() {
+                                        info!("Match found! Match ID: {}", match_id);
+                                        if let Some(server_secret) = data["serverSecret"].as_str() {
+                                            info!("Server secret: {}", server_secret);
+                                        }
+                                        // TODO: Handle match found - transition to connecting screen
+                                    }
+                                }
+                            }
+                            "queue_status" => {
+                                if let Some(data) = parsed["data"].as_object() {
+                                    if let (Some(position), Some(wait)) = (
+                                        data["position"].as_i64(),
+                                        data["estimated_wait"].as_i64()
+                                    ) {
+                                        info!("Queue position: {}, estimated wait: {}s", position, wait);
+                                    }
+                                }
+                            }
+                            "queue_cancelled" => {
+                                if let Some(reason) = parsed["data"]["reason"].as_str() {
+                                    info!("Queue cancelled: {}", reason);
+                                }
+                            }
+                            _ => {
+                                info!("Unknown WebSocket message type: {}", msg_type);
+                            }
+                        }
+                    }
+                } else {
+                    warn!("Failed to parse WebSocket message: {}", text);
+                }
+            }
+            Ok(Message::Close(_)) => {
+                info!("WebSocket connection closed");
+                break;
+            }
+            Err(e) => {
+                error!("WebSocket error: {}", e);
+                break;
+            }
+            _ => {}
+        }
+    }
+}
