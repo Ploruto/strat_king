@@ -1,7 +1,13 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
+import crypto from 'crypto'
 
 export default class Match extends BaseModel {
+  @beforeCreate()
+  public static async generateServerSecret(match: Match) {
+    match.serverSecret = crypto.randomBytes(16).toString('hex')
+  }
+
   @column({ isPrimary: true })
   declare id: number
 
@@ -20,6 +26,9 @@ export default class Match extends BaseModel {
 
   @column()
   declare authToken: string | null
+
+  @column()
+  declare serverSecret: string
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

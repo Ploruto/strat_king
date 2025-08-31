@@ -36,7 +36,8 @@ export default class MatchmakingsController {
             data: {
               matchId: match.id,
               players: playerIds,
-              status: 'pending'
+              status: 'pending',
+              serverSecret: match.serverSecret
             }
           }))
         }

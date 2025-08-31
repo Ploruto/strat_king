@@ -21,7 +21,7 @@ test.group('WebSocket Matchmaking', (group) => {
     wsServer?.close()
   })
 
-  test('should send match_found notifications via WebSocket when match is created', async ({ client, assert }) => {
+  test('should send match_found notifications via WebSocket when match is created', async ({ client, assert, cleanup }) => {
     // Create two players
     const player1 = await Player.create({
       username: 'ws_player1',
@@ -45,35 +45,40 @@ test.group('WebSocket Matchmaking', (group) => {
     const ws1 = new WebSocket(`ws://localhost:8081/ws?token=${wsToken1}`)
     const ws2 = new WebSocket(`ws://localhost:8081/ws?token=${wsToken2}`)
 
+    cleanup(() => {
+      ws1.close()
+      ws2.close()
+    })
+
     // Wait for connections to be established
     await Promise.all([
       new Promise((resolve) => ws1.once('open', resolve)),
       new Promise((resolve) => ws2.once('open', resolve))
     ])
 
-    // Clear connection messages
-    await Promise.all([
-      new Promise((resolve) => ws1.once('message', resolve)),
-      new Promise((resolve) => ws2.once('message', resolve))
-    ])
+    
 
     // Set up message listeners to catch match_found notifications
     const matchFoundMessages: any[] = []
+    const matchFoundPromise = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timeout: Only received ${matchFoundMessages.length} match_found messages`))
+      }, 5000)
 
-    ws1.on('message', (data) => {
-      const message = JSON.parse(data.toString())
-      console.log(data.toString())
-      if (message.type === 'match_found') {
-        matchFoundMessages.push({ player: player1.id, message })
+      const onMessage = (data: WebSocket.Data, playerId: number) => {
+        const message = JSON.parse(data.toString())
+        console.log(data.toString())
+        if (message.type === 'match_found') {
+          matchFoundMessages.push({ player: playerId, message })
+          if (matchFoundMessages.length === 2) {
+            clearTimeout(timeout)
+            resolve()
+          }
+        }
       }
-    })
 
-    ws2.on('message', (data) => {
-      console.log(data.toString())
-      const message = JSON.parse(data.toString())
-      if (message.type === 'match_found') {
-        matchFoundMessages.push({ player: player2.id, message })
-      }
+      ws1.on('message', (data) => onMessage(data, player1.id))
+      ws2.on('message', (data) => onMessage(data, player2.id))
     })
 
     // Player 1 joins queue
@@ -86,8 +91,8 @@ test.group('WebSocket Matchmaking', (group) => {
       .post('/matchmaking/join')
       .header('Authorization', `Bearer ${token2.value!.release()}`)
 
-    // Wait briefly for WebSocket messages to be processed
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // Wait for WebSocket messages to be processed
+    await matchFoundPromise
 
     // Verify match was created
     const matches = await Match.all()
@@ -103,6 +108,8 @@ test.group('WebSocket Matchmaking', (group) => {
     assert.equal(msg1.message.data.matchId, matches[0].id)
     assert.deepEqual(msg1.message.data.players.sort(), [player1.id, player2.id].sort())
     assert.equal(msg1.message.data.status, 'pending')
+    assert.exists(msg1.message.data.serverSecret)
+    assert.isString(msg1.message.data.serverSecret)
 
     // Check second notification
     const msg2 = matchFoundMessages.find(m => m.player === player2.id)
@@ -111,9 +118,10 @@ test.group('WebSocket Matchmaking', (group) => {
     assert.equal(msg2.message.data.matchId, matches[0].id)
     assert.deepEqual(msg2.message.data.players.sort(), [player1.id, player2.id].sort())
     assert.equal(msg2.message.data.status, 'pending')
+    assert.exists(msg2.message.data.serverSecret)
+    assert.isString(msg2.message.data.serverSecret)
 
-    // Clean up connections
-    ws1.close()
-    ws2.close()
+    // Check that the serverSecret is the same for both players
+    assert.equal(msg1.message.data.serverSecret, msg2.message.data.serverSecret)
   })
 })
