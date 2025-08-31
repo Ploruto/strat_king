@@ -8,7 +8,7 @@ use crate::gameplay::map::{GamePath, GameStructure, StructureConnections};
 use crate::gameplay::structures::{Tower, TowerStats};
 
 pub const FIXED_TIMESTEP_HZ: f64 = 64.0;
-pub const SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 5000);
+pub const SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 7777);
 pub const SERVER_REPLICATION_INTERVAL: Duration = Duration::from_millis(100);
 
 pub mod gameplay;
