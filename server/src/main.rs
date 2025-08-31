@@ -1,3 +1,5 @@
+use bevy::asset::AssetPlugin;
+use bevy::log::LogPlugin;
 use bevy::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
 use lightyear::prelude::server::*;
@@ -120,8 +122,86 @@ fn main() -> anyhow::Result<()> {
 
     app.insert_resource(server_config);
     app.insert_resource(game_state_manager);
+    /* MinimalPlugins:
+    bevy_app:::TaskPoolPlugin,
+        bevy_diagnostic:::FrameCountPlugin,
+        bevy_time:::TimePlugin,
+        bevy_app:::ScheduleRunnerPlugin,
+        #[cfg(feature = "bevy_ci_testing")]
+        bevy_dev_tools::ci_testing:::CiTestingPlugin,
+        */
 
-    app.add_plugins(DefaultPlugins);
+    /* DefaultPlugins:
+    bevy_app:::PanicHandlerPlugin,
+        #[cfg(feature = "bevy_log")]
+        bevy_log:::LogPlugin,
+        bevy_app:::TaskPoolPlugin,
+        bevy_diagnostic:::FrameCountPlugin,
+        bevy_time:::TimePlugin,
+        bevy_transform:::TransformPlugin,
+        bevy_diagnostic:::DiagnosticsPlugin,
+        bevy_input:::InputPlugin,
+        #[custom(cfg(not(feature = "bevy_window")))]
+        bevy_app:::ScheduleRunnerPlugin,
+        #[cfg(feature = "bevy_window")]
+        bevy_window:::WindowPlugin,
+        #[cfg(feature = "bevy_window")]
+        bevy_a11y:::AccessibilityPlugin,
+        #[cfg(feature = "std")]
+        #[custom(cfg(any(unix, windows)))]
+        bevy_app:::TerminalCtrlCHandlerPlugin,
+        #[cfg(feature = "bevy_asset")]
+        bevy_asset:::AssetPlugin,
+        #[cfg(feature = "bevy_scene")]
+        bevy_scene:::ScenePlugin,
+        #[cfg(feature = "bevy_winit")]
+        bevy_winit:::WinitPlugin,
+        #[cfg(feature = "bevy_render")]
+        bevy_render:::RenderPlugin,
+        // NOTE: Load this after renderer initialization so that it knows about the supported
+        // compressed texture formats.
+        #[cfg(feature = "bevy_render")]
+        bevy_render::texture:::ImagePlugin,
+        #[cfg(feature = "bevy_render")]
+        #[custom(cfg(all(not(target_arch = "wasm32"), feature = "multi_threaded")))]
+        bevy_render::pipelined_rendering:::PipelinedRenderingPlugin,
+        #[cfg(feature = "bevy_core_pipeline")]
+        bevy_core_pipeline:::CorePipelinePlugin,
+        #[cfg(feature = "bevy_sprite")]
+        bevy_sprite:::SpritePlugin,
+        #[cfg(feature = "bevy_text")]
+        bevy_text:::TextPlugin,
+        #[cfg(feature = "bevy_ui")]
+        bevy_ui:::UiPlugin,
+        #[cfg(feature = "bevy_pbr")]
+        bevy_pbr:::PbrPlugin,
+        // NOTE: Load this after renderer initialization so that it knows about the supported
+        // compressed texture formats.
+        #[cfg(feature = "bevy_gltf")]
+        bevy_gltf:::GltfPlugin,
+        #[cfg(feature = "bevy_audio")]
+        bevy_audio:::AudioPlugin,
+        #[cfg(feature = "bevy_gilrs")]
+        bevy_gilrs:::GilrsPlugin,
+        #[cfg(feature = "bevy_animation")]
+        bevy_animation:::AnimationPlugin,
+        #[cfg(feature = "bevy_gizmos")]
+        bevy_gizmos:::GizmoPlugin,
+        #[cfg(feature = "bevy_state")]
+        bevy_state::app:::StatesPlugin,
+        #[cfg(feature = "bevy_dev_tools")]
+        bevy_dev_tools:::DevToolsPlugin,
+        #[cfg(feature = "bevy_ci_testing")]
+        bevy_dev_tools::ci_testing:::CiTestingPlugin,
+        #[plugin_group]
+        #[cfg(feature = "bevy_picking")]
+        bevy_picking:::DefaultPickingPlugins,
+        #[doc(hidden)]
+        :IgnoreAmbiguitiesPlugin,
+        */
+
+    app.add_plugins(MinimalPlugins);
+    app.add_plugins(AssetPlugin::default());
     app.add_plugins(ServerPlugins {
         tick_duration: core::time::Duration::from_secs_f64(1.0 / FIXED_TIMESTEP_HZ),
     });
