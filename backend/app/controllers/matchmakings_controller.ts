@@ -6,8 +6,11 @@ import { ServerManager } from '#services/server_manager'
 
 export default class MatchmakingsController {
   async join({ auth }: HttpContext) {
+    await auth.authenticate()
     const player = auth.getUserOrFail()
-    
+
+    console.log("player joined: ", player.id)
+
     await MatchmakingQueue.create({
       playerId: player.id,
       gameMode: '1v1'
@@ -22,7 +25,7 @@ export default class MatchmakingsController {
     if (queueEntries.length >= 2) {
       // Create match with the first 2 players
       const playerIds = queueEntries.map(entry => entry.playerId)
-      
+
       const match = await Match.create({
         playerIds: playerIds,
         status: 'pending'
@@ -69,7 +72,7 @@ export default class MatchmakingsController {
 
       } catch (error) {
         console.error('Failed to spawn game server:', error)
-        
+
         // Update match as failed
         await match.merge({ status: 'failed' }).save()
 

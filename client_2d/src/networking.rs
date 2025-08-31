@@ -128,16 +128,40 @@ pub async fn authenticate_user(
     }
 }
 
-pub async fn join_queue(game_mode: &str, player_id: &str) -> Result<(), String> {
-    // TODO: Replace with actual HTTP request to join queue
-    // let response = reqwest::post(&format!("{}/matchmaking/join", server_url))
-    //     .json(&QueueRequest { game_mode, player_id })
-    //     .send()
-    //     .await?;
+pub async fn join_queue(
+    game_mode: &str,
+    player_id: &str,
+    server_url: &str,
+    auth_token: &str,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
 
-    // Mock success
-    // tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    Ok(())
+    let queue_request = QueueRequest {
+        game_mode: game_mode.to_string(),
+        player_id: player_id.to_string(),
+    };
+
+    println!("Join q with token: ${auth_token}");
+
+    let response = client
+        .post(&format!("{}/matchmaking/join", server_url))
+        .header("Authorization", &format!("Bearer {}", auth_token))
+        .header("Content-Type", "application/json")
+        .json(&queue_request)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+
+        Err(format!("Queue join failed: {}", error_text))
+    }
 }
 
 // TODO: Implement WebSocket connection handling

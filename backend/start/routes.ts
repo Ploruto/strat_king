@@ -31,7 +31,7 @@ router.group(() => {
   router.post('/login', [AuthController, 'login'])
 }).prefix('/auth')
 
-router.post('/matchmaking/join', [MatchmakingsController, 'join']).use(middleware.auth({ guards: ['api'] }))
+router.post('/matchmaking/join', [MatchmakingsController, 'join'])
 
 router.group(() => {
   router.post('/server-ready', [WebhooksController, 'serverReady'])

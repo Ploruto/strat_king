@@ -36,9 +36,7 @@ export default class AuthController {
   }
 
   async login({ request, response }: HttpContext) {
-    console.log("login")
     const { username, password } = request.only(['username', 'password'])
-    console.log(`received request with: ${username} ${password}`)
 
     const player = await Player.findBy('username', username)
     if (!player) {
@@ -56,7 +54,7 @@ export default class AuthController {
       })
     }
 
-    const token = jwt.sign({ playerId: player.id }, env.get('APP_KEY'), { expiresIn: '24h' })
+    const token = await Player.accessTokens.create(player);
 
     return response.status(200).json({
       success: true,
@@ -64,7 +62,7 @@ export default class AuthController {
       data: {
         player_id: player.id,
         username: player.username,
-        token
+        token: token.value.release()
       }
     })
   }

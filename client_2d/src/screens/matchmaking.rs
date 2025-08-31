@@ -1,6 +1,6 @@
 //! The matchmaking screen for finding online matches.
 
-use crate::{screens::Screen, theme::widget};
+use crate::{networking::{self, NetworkingState}, screens::Screen, theme::widget};
 use bevy::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -50,18 +50,37 @@ fn spawn_matchmaking_ui(mut commands: Commands) {
     ));
 }
 
-fn join_queue(_: Trigger<Pointer<Click>>, mut matchmaking_query: Query<&mut MatchmakingStatus>) {
+fn join_queue(
+    _: Trigger<Pointer<Click>>, 
+    mut matchmaking_query: Query<&mut MatchmakingStatus>,
+    networking_state: Res<NetworkingState>,
+    runtime: Res<bevy_tokio_tasks::TokioTasksRuntime>,
+) {
     for mut status in matchmaking_query.iter_mut() {
         if !status.in_queue {
             status.in_queue = true;
             status.queue_time = 0.0;
             info!("Joining 1v1 queue...");
 
-            // TODO: Send HTTP request to backend to join queue
-            // TODO: Establish WebSocket connection for real-time updates
-
-            // Mock: simulate websocket connection
-            status.websocket_connected = true;
+            // Get authentication data
+            if let (Some(auth_token), Some(player_id)) = (&networking_state.auth_token, &networking_state.player_id) {
+                let auth_token = auth_token.clone();
+                let player_id = player_id.clone();
+                let server_url = networking_state.server_url.clone();
+                
+                // Join queue via HTTP
+                runtime.spawn_background_task(|mut ctx| async move {
+                    match networking::join_queue("1v1", &player_id, &server_url, &auth_token).await {
+                        Ok(()) => {
+                            info!("Successfully joined queue");
+                            // TODO: Establish WebSocket connection for real-time updates
+                        }
+                        Err(error) => {
+                            error!("Failed to join queue: {}", error);
+                        }
+                    }
+                });
+            }
         }
     }
 }
