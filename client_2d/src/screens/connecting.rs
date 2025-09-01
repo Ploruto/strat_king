@@ -1,11 +1,14 @@
 //! The connecting screen for joining a game server.
 
-use bevy::prelude::*;
 use crate::{screens::Screen, theme::widget};
+use bevy::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Connecting), spawn_connecting_ui);
-    app.add_systems(Update, handle_server_connection.run_if(in_state(Screen::Connecting)));
+    app.add_systems(
+        Update,
+        handle_server_connection.run_if(in_state(Screen::Connecting)),
+    );
 }
 
 #[derive(Component)]
@@ -40,21 +43,11 @@ fn handle_server_connection(
         if !status.is_connecting {
             status.is_connecting = true;
             info!("Starting game server connection...");
-            
+
             // TODO: This is where we'll integrate lightyear client
             // 1. Get server connection info from matchmaking result
             // 2. Create lightyear client with authentication token
             // 3. Connect to dedicated game server via UDP
-        }
-        
-        status.connection_time += time.delta_secs();
-        
-        // Mock: Auto-connect after 3 seconds
-        // TODO: Replace with real lightyear connection logic
-        if status.connection_time > 3.0 {
-            info!("Connected to game server! Starting match...");
-            next_screen.set(Screen::Gameplay);
-            break;
         }
     }
 }

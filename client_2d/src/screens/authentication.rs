@@ -57,24 +57,14 @@ fn spawn_auth_ui(mut commands: Commands) {
             widget::header("Strategy King - Login"),
             // Status message
             (
-                widget::label("Enter your credentials to play online"),
+                widget::label("Choose player to login as:"),
                 StatusMessage
             ),
-            // Username input (simplified as button for now - proper text input would need more complex widget system)
+            // Player 1 login button
+            (widget::button("Login as Player 1", handle_player1_login), LoginButton),
+            // Player 2 login button
             (
-                widget::button("Username: testuser", select_username),
-                UsernameInput
-            ),
-            // Password input (simplified as button for now)
-            (
-                widget::button("Password: ********", select_password),
-                PasswordInput
-            ),
-            // Login button
-            (widget::button("Login", handle_login_click), LoginButton),
-            // Register button
-            (
-                widget::button("Register New Account", handle_register_click),
+                widget::button("Login as Player 2", handle_player2_login),
                 RegisterButton
             ),
             // Skip to offline button
@@ -107,22 +97,40 @@ fn select_password(_: Trigger<Pointer<Click>>) {
     info!("Password field selected (TODO: implement text input)");
 }
 
-fn handle_login_click(
+fn handle_player1_login(
     _: Trigger<Pointer<Click>>,
     mut auth_query: Query<&mut AuthenticationStatus>,
     networking_state: Res<NetworkingState>,
     runtime: Res<bevy_tokio_tasks::TokioTasksRuntime>,
 ) {
-    info!("Login button clicked");
+    authenticate_player("testuser", "password123", auth_query, networking_state, runtime);
+}
+
+fn handle_player2_login(
+    _: Trigger<Pointer<Click>>,
+    mut auth_query: Query<&mut AuthenticationStatus>,
+    networking_state: Res<NetworkingState>,
+    runtime: Res<bevy_tokio_tasks::TokioTasksRuntime>,
+) {
+    authenticate_player("player2", "password123", auth_query, networking_state, runtime);
+}
+
+fn authenticate_player(
+    username: &str,
+    password: &str,
+    mut auth_query: Query<&mut AuthenticationStatus>,
+    networking_state: Res<NetworkingState>,
+    runtime: Res<bevy_tokio_tasks::TokioTasksRuntime>,
+) {
+    info!("Login button clicked for {}", username);
 
     for mut auth_status in auth_query.iter_mut() {
         if !auth_status.is_authenticating {
             auth_status.is_authenticating = true;
-            auth_status.status_message = "Authenticating...".to_string();
+            auth_status.status_message = format!("Authenticating as {}...", username);
 
-            // For now, use hardcoded test credentials
-            let username = "testuser".to_string();
-            let password = "password123".to_string();
+            let username = username.to_string();
+            let password = password.to_string();
             let server_url = networking_state.server_url.clone();
 
             // Spawn async task for authentication using bevy-tokio-tasks
@@ -137,17 +145,21 @@ fn handle_login_click(
                         // Update networking state and navigate to matchmaking
                         let auth_token = response.data.token.clone();
                         let player_id = response.data.player_id.to_string();
-                        
+
                         ctx.run_on_main_thread(move |ctx| {
                             // Update networking state
-                            if let Some(mut networking_state) = ctx.world.get_resource_mut::<NetworkingState>() {
+                            if let Some(mut networking_state) =
+                                ctx.world.get_resource_mut::<NetworkingState>()
+                            {
                                 networking_state.is_connected = true;
                                 networking_state.auth_token = Some(auth_token);
                                 networking_state.player_id = Some(player_id);
                             }
-                            
+
                             // Navigate to matchmaking screen
-                            if let Some(mut next_screen) = ctx.world.get_resource_mut::<NextState<Screen>>() {
+                            if let Some(mut next_screen) =
+                                ctx.world.get_resource_mut::<NextState<Screen>>()
+                            {
                                 next_screen.set(Screen::Matchmaking);
                             }
                         })
@@ -166,10 +178,6 @@ fn handle_login_click(
             });
         }
     }
-}
-
-fn handle_register_click(_: Trigger<Pointer<Click>>) {
-    info!("Register button clicked (TODO: implement registration flow)");
 }
 
 fn skip_to_offline(_: Trigger<Pointer<Click>>, mut next_screen: ResMut<NextState<Screen>>) {
