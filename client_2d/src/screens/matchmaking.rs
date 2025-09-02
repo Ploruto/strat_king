@@ -1,13 +1,23 @@
 //! The matchmaking screen for finding online matches.
 
-use crate::{networking::{self, NetworkingState}, screens::Screen, theme::widget};
+use crate::{
+    networking::{self, MatchFoundEvent, MatchFoundStatus, NetworkingState},
+    screens::Screen,
+    theme::widget,
+};
 use bevy::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Matchmaking), spawn_matchmaking_ui);
     app.add_systems(
         Update,
-        (handle_queue_join, handle_matchmaking_updates).run_if(in_state(Screen::Matchmaking)),
+        (
+            handle_queue_join,
+            handle_matchmaking_updates,
+            handle_match_found,
+            poll_match_status,
+        )
+            .run_if(in_state(Screen::Matchmaking)),
     );
 }
 
@@ -37,21 +47,15 @@ fn spawn_matchmaking_ui(mut commands: Commands) {
         children![
             widget::header("Find Match"),
             widget::label("Select your game mode:"),
-            (
-                QueueButton,
-                widget::button("Join 1v1 Queue", join_queue),
-            ),
-            (
-                QueueStatus,
-                widget::label("Not in queue"),
-            ),
+            (QueueButton, widget::button("Join 1v1 Queue", join_queue),),
+            (QueueStatus, widget::label("Not in queue"),),
             widget::button("Back to Main Menu", back_to_main_menu),
         ],
     ));
 }
 
 fn join_queue(
-    _: Trigger<Pointer<Click>>, 
+    _: Trigger<Pointer<Click>>,
     mut matchmaking_query: Query<&mut MatchmakingStatus>,
     networking_state: Res<NetworkingState>,
     runtime: Res<bevy_tokio_tasks::TokioTasksRuntime>,
@@ -63,27 +67,39 @@ fn join_queue(
             info!("Joining 1v1 queue...");
 
             // Get authentication data
-            if let (Some(auth_token), Some(player_id)) = (&networking_state.auth_token, &networking_state.player_id) {
+            if let (Some(auth_token), Some(player_id)) =
+                (&networking_state.auth_token, &networking_state.player_id)
+            {
                 let auth_token = auth_token.clone();
                 let player_id = player_id.clone();
                 let server_url = networking_state.server_url.clone();
-                
+
                 // First establish WebSocket connection, then join queue
                 runtime.spawn_background_task(|mut ctx| async move {
                     // Connect to WebSocket first
                     match networking::connect_websocket(&auth_token, &server_url).await {
                         Ok(ws_stream) => {
                             info!("WebSocket connected successfully");
-                            
-                            // Spawn a separate task to listen for WebSocket messages
+
+                            // Pass context to WebSocket listener for resource updates
+                            let ws_ctx = ctx.clone();
                             let ws_listener = tokio::spawn(async move {
-                                networking::listen_for_messages(ws_stream).await;
+                                networking::listen_for_messages(ws_stream, ws_ctx).await;
                             });
-                            
+
                             // Now join the queue
-                            match networking::join_queue("1v1", &player_id, &server_url, &auth_token).await {
+                            match networking::join_queue(
+                                "1v1",
+                                &player_id,
+                                &server_url,
+                                &auth_token,
+                            )
+                            .await
+                            {
                                 Ok(()) => {
-                                    info!("Successfully joined queue - listening for match updates");
+                                    info!(
+                                        "Successfully joined queue - listening for match updates"
+                                    );
                                 }
                                 Err(error) => {
                                     error!("Failed to join queue: {}", error);
@@ -169,4 +185,41 @@ fn cancel_queue(
 
 fn back_to_main_menu(_: Trigger<Pointer<Click>>, mut next_screen: ResMut<NextState<Screen>>) {
     next_screen.set(Screen::Title);
+}
+
+fn handle_match_found(
+    mut match_events: EventReader<MatchFoundEvent>,
+    mut networking_state: ResMut<NetworkingState>,
+    mut next_screen: ResMut<NextState<Screen>>,
+) {
+    for event in match_events.read() {
+        info!("Match found event received! Transitioning to connecting screen");
+
+        // Store game server info
+        networking_state.game_server = Some(crate::networking::GameServerInfo {
+            match_id: event.match_id,
+            server_host: event.server_host.clone(),
+            server_port: event.server_port,
+            server_secret: event.server_secret.clone(),
+        });
+
+        // Transition to connecting screen
+        next_screen.set(Screen::Connecting);
+    }
+}
+
+fn poll_match_status(
+    mut match_status: ResMut<MatchFoundStatus>,
+    mut networking_state: ResMut<NetworkingState>,
+    mut next_screen: ResMut<NextState<Screen>>,
+) {
+    if let Some(match_info) = match_status.pending_match.take() {
+        info!("Match found via polling! Transitioning to connecting screen");
+
+        // Store game server info
+        networking_state.game_server = Some(match_info);
+
+        // Transition to connecting screen
+        next_screen.set(Screen::Connecting);
+    }
 }

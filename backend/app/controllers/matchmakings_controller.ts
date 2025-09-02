@@ -73,6 +73,8 @@ export default class MatchmakingsController {
                 matchId: match.id,
                 players: playerIds,
                 status: 'spawning',
+                serverHost: '127.0.0.1',
+                serverPort: port,
                 serverSecret: match.serverSecret,
                 message: 'Game server is starting...'
               }

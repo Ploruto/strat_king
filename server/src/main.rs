@@ -225,6 +225,7 @@ impl Plugin for ServerPlugin {
         app.init_asset::<MapDefinition>();
         app.add_plugins(RonAssetPlugin::<MapDefinition>::new(&[".ron"]));
         app.add_systems(Startup, (startup, load_map_asset));
+        app.add_systems(Update, start_server);
         app.add_observer(handle_new_client);
         app.add_observer(handle_client_disconnect);
         app.add_systems(
@@ -350,15 +351,24 @@ fn game_state_manager(
 }
 
 fn startup(mut commands: Commands, config: Res<ServerConfig>) {
-    info!("Starting server on {:?}", config.server_addr);
-    let server = commands
-        .spawn((
-            NetcodeServer::new(NetcodeConfig::default()),
-            LocalAddr(config.server_addr),
-            ServerUdpIo::default(),
-        ))
-        .id();
-    commands.trigger_targets(Start, server);
+    info!("Setting up server on {:?}", config.server_addr);
+    commands.spawn((
+        Name::from("GameServer"),
+        Server::default(),  // ← Add Server marker component
+        NetcodeServer::new(NetcodeConfig {
+            protocol_id: 0,  // ← Match client protocol
+            ..Default::default()
+        }),
+        LocalAddr(config.server_addr),
+        ServerUdpIo::default(),
+    ));
+}
+
+fn start_server(mut commands: Commands, server_query: Query<Entity, (With<Server>, Without<Started>)>) {
+    for server_entity in server_query.iter() {
+        info!("Starting server entity: {:?}", server_entity);
+        commands.trigger_targets(Start, server_entity);
+    }
 }
 
 fn load_map_asset(mut commands: Commands, asset_server: Res<AssetServer>) {

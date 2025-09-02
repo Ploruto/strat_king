@@ -30,8 +30,8 @@ RUN chown -R gameserver:gameserver /app
 # Switch to non-root user
 USER gameserver
 
-# Expose the game server port
-EXPOSE 7777
+# Expose the game server port (UDP for Lightyear)
+EXPOSE 7777/udp
 
 # Set default environment variables
 ENV SERVER_PORT=7777

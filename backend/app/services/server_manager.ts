@@ -15,7 +15,7 @@ export class ServerManager {
     try {
       // Spawn Docker container with environment variables
       const dockerCommand = [
-        'run', '-d', '-P', // -d for detached, -P for auto port mapping
+        'run', '-d', '-p', '0:7777/udp', // -d for detached, explicit UDP port mapping
         '-e', `SERVER_SECRET=${serverSecret}`,
         '-e', `MATCH_ID=${matchId}`,
         '-e', `EXPECTED_PLAYERS=${JSON.stringify(playerIds)}`,
@@ -30,9 +30,9 @@ export class ServerManager {
       const { stdout: containerId } = await execAsync(`docker ${dockerCommand.join(' ')}`)
       const cleanContainerId = containerId.trim()
 
-      // Get the assigned port
+      // Get the assigned port (UDP)
       const { stdout: portOutput } = await execAsync(
-        `docker port ${cleanContainerId} 7777`
+        `docker port ${cleanContainerId} 7777/udp`
       )
       
       // Extract port number from output like "0.0.0.0:32768"

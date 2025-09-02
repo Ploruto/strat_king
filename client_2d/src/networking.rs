@@ -3,8 +3,25 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// Event fired when a match is found via WebSocket
+#[derive(Event)]
+pub struct MatchFoundEvent {
+    pub match_id: i64,
+    pub server_host: String,
+    pub server_port: u16,
+    pub server_secret: String,
+}
+
+/// Resource to communicate match found status from WebSocket task
+#[derive(Resource, Default)]
+pub struct MatchFoundStatus {
+    pub pending_match: Option<GameServerInfo>,
+}
+
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<NetworkingState>();
+    app.init_resource::<MatchFoundStatus>();
+    app.add_event::<MatchFoundEvent>();
 }
 
 /// Global networking state resource
@@ -14,6 +31,15 @@ pub struct NetworkingState {
     pub auth_token: Option<String>,
     pub player_id: Option<String>,
     pub server_url: String,
+    pub game_server: Option<GameServerInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GameServerInfo {
+    pub match_id: i64,
+    pub server_host: String,
+    pub server_port: u16,
+    pub server_secret: String,
 }
 
 impl NetworkingState {
@@ -23,6 +49,7 @@ impl NetworkingState {
             auth_token: None,
             player_id: None,
             server_url: "http://localhost:3333".to_string(), // Backend service URL (matches our AdonisJS backend)
+            game_server: None,
         }
     }
 }
@@ -187,6 +214,7 @@ pub async fn listen_for_messages(
     mut ws_stream: tokio_tungstenite::WebSocketStream<
         tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
     >,
+    mut ctx: bevy_tokio_tasks::TaskContext,
 ) {
     use futures_util::{SinkExt, StreamExt};
     use tokio_tungstenite::tungstenite::Message;
@@ -207,22 +235,50 @@ pub async fn listen_for_messages(
                             }
                             "match_found" => {
                                 if let Some(data) = parsed["data"].as_object() {
-                                    if let Some(match_id) = data["matchId"].as_i64() {
-                                        info!("Match found! Match ID: {}", match_id);
-                                        if let Some(server_secret) = data["serverSecret"].as_str() {
-                                            info!("Server secret: {}", server_secret);
-                                        }
-                                        // TODO: Handle match found - transition to connecting screen
+                                    if let (
+                                        Some(match_id),
+                                        Some(server_host),
+                                        Some(server_port),
+                                        Some(server_secret),
+                                    ) = (
+                                        data["matchId"].as_i64(),
+                                        data["serverHost"].as_str(),
+                                        data["serverPort"].as_u64(),
+                                        data["serverSecret"].as_str(),
+                                    ) {
+                                        info!(
+                                            "Match found! Match ID: {}, Server: {}:{}, Secret: {}",
+                                            match_id, server_host, server_port, server_secret
+                                        );
+
+                                        // Update MatchFoundStatus resource on main thread
+                                        let match_info = GameServerInfo {
+                                            match_id,
+                                            server_host: server_host.to_string(),
+                                            server_port: server_port as u16,
+                                            server_secret: server_secret.to_string(),
+                                        };
+                                        
+                                        ctx.run_on_main_thread(move |ctx| {
+                                            if let Some(mut match_status) = ctx.world.get_resource_mut::<MatchFoundStatus>() {
+                                                match_status.pending_match = Some(match_info);
+                                                info!("Updated MatchFoundStatus resource with server info");
+                                            }
+                                        }).await;
+                                    } else {
+                                        warn!("Match found message missing required fields");
                                     }
                                 }
                             }
                             "queue_status" => {
                                 if let Some(data) = parsed["data"].as_object() {
-                                    if let (Some(position), Some(wait)) = (
-                                        data["position"].as_i64(),
-                                        data["estimated_wait"].as_i64()
-                                    ) {
-                                        info!("Queue position: {}, estimated wait: {}s", position, wait);
+                                    if let (Some(position), Some(wait)) =
+                                        (data["position"].as_i64(), data["estimated_wait"].as_i64())
+                                    {
+                                        info!(
+                                            "Queue position: {}, estimated wait: {}s",
+                                            position, wait
+                                        );
                                     }
                                 }
                             }
