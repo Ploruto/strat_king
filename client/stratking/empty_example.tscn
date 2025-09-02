@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://cav6f5yg816j7"]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="Node" type="Node" parent="."]
+
+[node name="Button" type="Button" parent="Node"]
+offset_right = 8.0
+offset_bottom = 8.0
+text = "Hello world!"
