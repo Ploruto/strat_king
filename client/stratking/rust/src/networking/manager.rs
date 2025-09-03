@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 #[derive(Resource)]
 pub struct NetworkManager {
     pub connection_state: ConnectionState,
+    pub current_player: Option<PlayerProfile>,
     pub websocket_receiver: Option<mpsc::UnboundedReceiver<WebSocketMessage>>,
     pub websocket_sender: Option<mpsc::UnboundedSender<serde_json::Value>>,
     pub http_client: reqwest::Client,
@@ -19,6 +20,7 @@ impl Default for NetworkManager {
     fn default() -> Self {
         Self {
             connection_state: ConnectionState::Offline,
+            current_player: None,
             websocket_receiver: None,
             websocket_sender: None,
             http_client: reqwest::Client::new(),
@@ -122,5 +124,26 @@ impl NetworkManager {
         self.websocket_receiver = None;
         self.websocket_sender = None;
         self.connection_state = ConnectionState::Offline;
+    }
+
+    pub fn set_current_player(&mut self, player_profile: PlayerProfile) {
+        self.current_player = Some(player_profile);
+    }
+
+    pub fn clear_current_player(&mut self) {
+        self.current_player = None;
+        self.connection_state = ConnectionState::Offline;
+    }
+
+    pub fn get_player_id(&self) -> Option<u64> {
+        self.current_player.as_ref().map(|p| p.user_id)
+    }
+
+    pub fn get_jwt_token(&self) -> Option<&str> {
+        self.current_player.as_ref().map(|p| p.jwt_token.as_str())
+    }
+
+    pub fn is_logged_in(&self) -> bool {
+        self.current_player.is_some()
     }
 }

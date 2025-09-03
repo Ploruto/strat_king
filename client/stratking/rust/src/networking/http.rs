@@ -81,7 +81,9 @@ pub fn http_system(
                                             login_completed.send(LoginCompleted {
                                                 success: false,
                                                 player_profile: None,
-                                                error: Some("Login response missing data".to_string()),
+                                                error: Some(
+                                                    "Login response missing data".to_string(),
+                                                ),
                                             });
                                         })
                                         .await;
@@ -89,7 +91,7 @@ pub fn http_system(
                                 } else {
                                     // Backend returned success=false
                                     error!("Login failed: {}", login_response.message);
-                                    
+
                                     ctx.run_on_main_thread(move |ctx| {
                                         let mut login_completed =
                                             ctx.world.resource_mut::<Events<LoginCompleted>>();
@@ -139,6 +141,7 @@ pub fn http_system(
 
     // Handle logout requests
     for _logout_event in logout_events.read() {
+        network_manager.clear_current_player();
         network_manager.disconnect_websocket();
         logout_completed.send(LogoutCompleted);
     }
@@ -172,6 +175,26 @@ pub fn http_system(
     }
 }
 
+pub fn login_success_system(
+    mut network_manager: ResMut<NetworkManager>,
+    mut login_completed: EventReader<LoginCompleted>,
+) {
+    for login_event in login_completed.read() {
+        if login_event.success {
+            if let Some(profile) = &login_event.player_profile {
+                network_manager.set_current_player(profile.clone());
+                info!(
+                    "Player profile stored in NetworkManager: {}",
+                    profile.username
+                );
+            }
+        } else {
+            // Login failed, clear any existing player data
+            network_manager.clear_current_player();
+        }
+    }
+}
+
 pub fn queue_system(
     mut network_manager: ResMut<NetworkManager>,
     mut join_queue_events: EventReader<JoinQueueRequested>,
@@ -188,10 +211,11 @@ pub fn queue_system(
             continue;
         }
 
+        let player_id = network_manager.get_player_id().unwrap_or(0);
         let message = json!({
             "type": "join_queue",
-            "player_id": "1", // This should come from the current player profile
-            "game_mode": join_event.game_mode.to_string()
+            "player_id": player_id,
+            "game_mode": "1v1", //join_event.game_mode.to_string()
         });
 
         if let Err(e) = network_manager.send_websocket_message(message) {
@@ -208,9 +232,10 @@ pub fn queue_system(
             continue;
         }
 
+        let player_id = network_manager.get_player_id().unwrap_or(0);
         let message = json!({
             "type": "leave_queue",
-            "player_id": "1" // This should come from the current player profile
+            "player_id": player_id
         });
 
         if let Err(e) = network_manager.send_websocket_message(message) {

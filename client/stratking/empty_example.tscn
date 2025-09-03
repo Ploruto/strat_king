@@ -2,16 +2,33 @@
 
 [node name="Node2D" type="Node2D"]
 
-[node name="ExampleButton" type="Button" parent="."]
-offset_right = 101.0
-offset_bottom = 31.0
-text = "Hello world!"
+[node name="UI" type="Node" parent="."]
 
-[node name="ExampleButton2" type="Button" parent="."]
-offset_left = -1.0
-offset_top = 34.0
-offset_right = 100.0
-offset_bottom = 65.0
-text = "Hello world!"
+[node name="UsernameInput" type="LineEdit" parent="UI"]
+offset_left = 27.0
+offset_top = 28.0
+offset_right = 219.0
+offset_bottom = 59.0
+placeholder_text = "Username"
 
-[node name="Node" type="Node" parent="."]
+[node name="PasswordInput" type="LineEdit" parent="UI"]
+offset_left = 27.0
+offset_top = 64.0
+offset_right = 219.0
+offset_bottom = 95.0
+placeholder_text = "Password"
+secret = true
+
+[node name="LoginButton" type="Button" parent="UI"]
+offset_left = 27.0
+offset_top = 99.0
+offset_right = 218.0
+offset_bottom = 130.0
+text = "Login"
+
+[node name="JoinQueueButton" type="Button" parent="UI"]
+offset_left = 27.0
+offset_top = 136.0
+offset_right = 218.0
+offset_bottom = 167.0
+text = "Join Queue"

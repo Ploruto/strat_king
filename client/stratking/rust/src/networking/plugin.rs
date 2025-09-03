@@ -33,6 +33,7 @@ impl Plugin for NetworkingPlugin {
             .add_systems(Update, (
                 websocket_system,
                 http_system,
+                login_success_system,
                 queue_system,
             ));
     }
