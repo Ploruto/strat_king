@@ -25,6 +25,19 @@ export_presets.cfg
 .godot/
 *.translation
 
+# Godot builds and exports
+android/
+builds/
+exports/
+*.apk
+*.aab
+*.zip
+*.dmg
+*.app
+*.x86_64
+*.x86
+*.pck
+
 # Build artifacts
 *.exe
 *.dll
