@@ -1,7 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { IncomingMessage } from 'http'
-import jwt from 'jsonwebtoken'
-import env from '#start/env'
+import { Secret } from '@adonisjs/core/helpers'
 import Player from '#models/player'
 
 interface AuthenticatedWebSocket extends WebSocket {
@@ -11,28 +10,55 @@ interface AuthenticatedWebSocket extends WebSocket {
 
 export default class WebSocketService {
   private wss: WebSocketServer | null = null
+  private static instance: WebSocketService
   private clients: Map<number, AuthenticatedWebSocket> = new Map()
 
-  public start(server: any) {
-    this.wss = new WebSocketServer({
-      server,
-      path: '/ws'
-    })
+  public static getInstance(): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService()
+    }
+    return WebSocketService.instance
+  }
+
+  public start(server?: any, port?: number) {
+    if (server) {
+      this.wss = new WebSocketServer({
+        server,
+        path: '/ws'
+      })
+    } else {
+      this.wss = new WebSocketServer({ 
+        port: port || 3334, 
+        path: '/ws' 
+      })
+    }
 
     this.wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
-      const url = new URL(request.url!, `http://${request.headers.host}`)
+      const baseUrl = server 
+        ? `http://${request.headers.host}` 
+        : `http://localhost:${port || 3334}`
+      const url = new URL(request.url!, baseUrl)
       const token = url.searchParams.get('token')
 
+      console.log("on connection: ")
+
       if (!token) {
+        console.log("token missing")
         ws.close(1008, 'Token required')
         return
       }
 
       try {
-        console.log("inside try logic of ws")
-        const payload = jwt.verify(token, env.get('APP_KEY')) as { playerId: number }
-        const player = await Player.find(payload.playerId)
+        const token_secret = new Secret<string>(token)
+        const res = await Player.accessTokens.verify(token_secret)
+        
+        if (!res) {
+          console.log("invalid token; cancel")
+          ws.close(1008, 'Invalid token')
+          return
+        }
 
+        const player = await Player.find(res.tokenableId)
         if (!player) {
           ws.close(1008, 'Invalid token')
           return
@@ -100,5 +126,9 @@ export default class WebSocketService {
 
   public getConnectedPlayers(): number[] {
     return Array.from(this.clients.keys())
+  }
+
+  public getClients(): Map<number, AuthenticatedWebSocket> {
+    return this.clients
   }
 }

@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Match from '#models/match'
-import { clients } from '#start/ws_init'
+import WebSocketService from '#services/websocket_service'
 import { ServerManager } from '#services/server_manager'
 
 export default class WebhooksController {
@@ -18,6 +18,8 @@ export default class WebhooksController {
       await match.merge({ status: 'active' }).save()
 
       // Notify players via WebSocket that server is ready
+      const wsService = WebSocketService.getInstance()
+      const clients = wsService.getClients()
       for (const playerId of match.playerIds) {
         const client = clients.get(playerId)
         if (client && client.readyState === 1) { // 1 = OPEN
@@ -61,6 +63,8 @@ export default class WebhooksController {
       }
 
       // Notify players via WebSocket that match is complete
+      const wsService = WebSocketService.getInstance()
+      const clients = wsService.getClients()
       for (const playerId of match.playerIds) {
         const client = clients.get(playerId)
         if (client && client.readyState === 1) {

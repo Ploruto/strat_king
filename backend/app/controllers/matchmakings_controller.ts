@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import MatchmakingQueue from '#models/matchmaking_queue'
 import Match from '#models/match'
-import { clients } from '#start/ws_init'
+import WebSocketService from '#services/websocket_service'
 import { ServerManager } from '#services/server_manager'
 
 export default class MatchmakingsController {
@@ -64,6 +64,8 @@ export default class MatchmakingsController {
         console.log(`🎮 Match ${match.id} server spawning on port ${port}`)
 
         // Send match found notifications via WebSocket
+        const wsService = WebSocketService.getInstance()
+        const clients = wsService.getClients()
         for (const playerId of playerIds) {
           const client = clients.get(playerId)
           if (client && client.readyState === 1) { // 1 = OPEN
@@ -94,6 +96,8 @@ export default class MatchmakingsController {
         await match.merge({ status: 'failed' }).save()
 
         // Notify players of failure
+        const wsService = WebSocketService.getInstance()
+        const clients = wsService.getClients()
         for (const playerId of playerIds) {
           const client = clients.get(playerId)
           if (client && client.readyState === 1) {
