@@ -24,7 +24,15 @@ impl Plugin for TestingNetworkPlugin {
         app.init_resource::<SignalConnectionState>();
         app.add_event::<LoginButtonPressed>();
         app.add_event::<JoinQueueButtonPressed>();
-        app.add_systems(Update, (connect_signals, handle_signals, login_handler));
+        app.add_systems(
+            Update,
+            (
+                connect_signals,
+                handle_signals,
+                login_handler,
+                join_queue_handler,
+            ),
+        );
     }
 }
 

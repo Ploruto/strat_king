@@ -17,19 +17,10 @@ pub async fn start_websocket_connection(
     ),
     Box<dyn std::error::Error + Send + Sync>,
 > {
-    let ws_url = websocket_url + "/matchmaking";
+    let ws_url = format!("{}/ws?token={}", websocket_url, jwt_token);
 
     let (ws_stream, _) = connect_async(&ws_url).await?;
     let (mut ws_sink, mut ws_stream) = ws_stream.split();
-
-    // Send authentication message
-    let auth_msg = json!({
-        "type": "auth",
-        "token": jwt_token
-    });
-    ws_sink
-        .send(Message::Text(auth_msg.to_string().into()))
-        .await?;
 
     // Create channels for communication with Bevy
     let (message_tx, message_rx) = mpsc::unbounded_channel::<WebSocketMessage>();
@@ -90,13 +81,48 @@ pub fn websocket_system(
     mut network_manager: ResMut<NetworkManager>,
     mut match_found_events: EventWriter<MatchFound>,
     mut queue_joined_events: EventWriter<QueueJoined>,
+    mut queue_join_response_events: EventWriter<QueueJoinResponse>,
     mut queue_left_events: EventWriter<QueueLeft>,
+    mut connection_established_events: EventWriter<ConnectionEstablished>,
     mut connection_lost_events: EventWriter<ConnectionLost>,
 ) {
     if let Some(receiver) = &mut network_manager.websocket_receiver {
         // Process all available messages without blocking
         while let Ok(message) = receiver.try_recv() {
             match message.message_type.as_str() {
+                "connection_success" => {
+                    if let Some(data) = message.data.get("data") {
+                        if let Some(message_text) = data.get("message").and_then(|v| v.as_str()) {
+                            connection_established_events.write(ConnectionEstablished {
+                                message: message_text.to_string(),
+                            });
+                            info!("WebSocket connected: {}", message_text);
+                        }
+                    }
+                }
+                "queue_join_response" => {
+                    if let Some(data) = message.data.get("data") {
+                        let success = data
+                            .get("success")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let message_text = data
+                            .get("message")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown response");
+
+                        queue_join_response_events.write(QueueJoinResponse {
+                            success,
+                            message: message_text.to_string(),
+                        });
+
+                        if success {
+                            info!("Queue join successful: {}", message_text);
+                        } else {
+                            warn!("Queue join failed: {}", message_text);
+                        }
+                    }
+                }
                 "match_found" => {
                     if let Some(data) = message.data.get("data") {
                         if let (
@@ -115,7 +141,7 @@ pub fn websocket_system(
                             let player_ids: Vec<u64> =
                                 players.iter().filter_map(|p| p.as_u64()).collect();
 
-                            match_found_events.send(MatchFound {
+                            match_found_events.write(MatchFound {
                                 match_id,
                                 server_host: server_host.to_string(),
                                 server_port: server_port as u16,
@@ -132,16 +158,16 @@ pub fn websocket_system(
                         .and_then(|v| v.as_u64())
                         .map(Duration::from_secs);
 
-                    queue_joined_events.send(QueueJoined {
+                    queue_joined_events.write(QueueJoined {
                         estimated_wait_time: estimated_wait,
                     });
                 }
                 "queue_left" => {
-                    queue_left_events.send(QueueLeft);
+                    queue_left_events.write(QueueLeft);
                 }
                 "error" => {
                     if let Some(error_msg) = message.data.get("message").and_then(|v| v.as_str()) {
-                        connection_lost_events.send(ConnectionLost {
+                        connection_lost_events.write(ConnectionLost {
                             reason: error_msg.to_string(),
                             retry_in: Duration::from_secs(5),
                         });

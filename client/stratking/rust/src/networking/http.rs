@@ -143,13 +143,13 @@ pub fn http_system(
     for _logout_event in logout_events.read() {
         network_manager.clear_current_player();
         network_manager.disconnect_websocket();
-        logout_completed.send(LogoutCompleted);
+        logout_completed.write(LogoutCompleted);
     }
 
     // Handle sync requests
     for _sync_event in sync_events.read() {
         if !network_manager.is_online() {
-            network_errors.send(NetworkError {
+            network_errors.write(NetworkError {
                 error: "Cannot sync while offline".to_string(),
                 recoverable: true,
             });
@@ -168,7 +168,7 @@ pub fn http_system(
         }
 
         network_manager.connection_state = ConnectionState::Online;
-        sync_completed.send(SyncCompleted {
+        sync_completed.write(SyncCompleted {
             success: true,
             conflicts,
         });
@@ -178,6 +178,7 @@ pub fn http_system(
 pub fn login_success_system(
     mut network_manager: ResMut<NetworkManager>,
     mut login_completed: EventReader<LoginCompleted>,
+    mut connect_websocket: EventWriter<ConnectWebSocketRequested>,
 ) {
     for login_event in login_completed.read() {
         if login_event.success {
@@ -187,10 +188,97 @@ pub fn login_success_system(
                     "Player profile stored in NetworkManager: {}",
                     profile.username
                 );
+
+                // Automatically connect WebSocket after successful login
+                connect_websocket.write(ConnectWebSocketRequested {
+                    jwt_token: profile.jwt_token.clone(),
+                });
             }
         } else {
             // Login failed, clear any existing player data
             network_manager.clear_current_player();
+        }
+    }
+}
+
+pub fn websocket_connection_system(
+    mut network_manager: ResMut<NetworkManager>,
+    mut connect_events: EventReader<ConnectWebSocketRequested>,
+    mut disconnect_events: EventReader<DisconnectWebSocketRequested>,
+    mut send_message_events: EventReader<SendWebSocketMessageRequested>,
+    mut network_errors: EventWriter<NetworkError>,
+    runtime: ResMut<TokioTasksRuntime>,
+) {
+    // Handle WebSocket connection requests
+    for connect_event in connect_events.read() {
+        if network_manager.websocket_receiver.is_some() {
+            info!("WebSocket already connected, ignoring connection request");
+            continue;
+        }
+
+        network_manager.connection_state = ConnectionState::Connecting;
+
+        // Spawn async task to connect WebSocket
+        runtime.spawn_background_task({
+            let jwt_token = connect_event.jwt_token.clone();
+            let websocket_url = network_manager.websocket_url.clone();
+
+            |mut ctx| async move {
+                match crate::networking::websocket::start_websocket_connection(
+                    jwt_token,
+                    websocket_url,
+                )
+                .await
+                {
+                    Ok((receiver, sender)) => {
+                        info!("WebSocket connection established");
+
+                        ctx.run_on_main_thread(move |ctx| {
+                            if let Some(mut network_manager) =
+                                ctx.world.get_resource_mut::<NetworkManager>()
+                            {
+                                network_manager.set_websocket_channels(receiver, sender);
+                            }
+                        })
+                        .await;
+                    }
+                    Err(e) => {
+                        error!("Failed to connect WebSocket: {}", e);
+
+                        ctx.run_on_main_thread(move |ctx| {
+                            if let Some(mut network_manager) =
+                                ctx.world.get_resource_mut::<NetworkManager>()
+                            {
+                                network_manager.connection_state = ConnectionState::Offline;
+                            }
+
+                            let mut network_errors =
+                                ctx.world.resource_mut::<Events<NetworkError>>();
+                            network_errors.send(NetworkError {
+                                error: format!("WebSocket connection failed: {}", e),
+                                recoverable: true,
+                            });
+                        })
+                        .await;
+                    }
+                }
+            }
+        });
+    }
+
+    // Handle WebSocket disconnection requests
+    for _disconnect_event in disconnect_events.read() {
+        network_manager.disconnect_websocket();
+        info!("WebSocket disconnected");
+    }
+
+    // Handle custom WebSocket message requests
+    for send_event in send_message_events.read() {
+        if let Err(e) = network_manager.send_websocket_message(send_event.message.clone()) {
+            network_errors.write(NetworkError {
+                error: format!("Failed to send WebSocket message: {}", e),
+                recoverable: true,
+            });
         }
     }
 }
@@ -204,22 +292,19 @@ pub fn queue_system(
     // Handle join queue requests
     for join_event in join_queue_events.read() {
         if !network_manager.is_online() {
-            network_errors.send(NetworkError {
+            network_errors.write(NetworkError {
                 error: "Cannot join queue while offline".to_string(),
                 recoverable: true,
             });
             continue;
         }
 
-        let player_id = network_manager.get_player_id().unwrap_or(0);
         let message = json!({
-            "type": "join_queue",
-            "player_id": player_id,
-            "game_mode": "1v1", //join_event.game_mode.to_string()
+            "type": "queue_join"
         });
 
         if let Err(e) = network_manager.send_websocket_message(message) {
-            network_errors.send(NetworkError {
+            network_errors.write(NetworkError {
                 error: format!("Failed to join queue: {}", e),
                 recoverable: true,
             });
@@ -232,14 +317,12 @@ pub fn queue_system(
             continue;
         }
 
-        let player_id = network_manager.get_player_id().unwrap_or(0);
         let message = json!({
-            "type": "leave_queue",
-            "player_id": player_id
+            "type": "queue_leave"
         });
 
         if let Err(e) = network_manager.send_websocket_message(message) {
-            network_errors.send(NetworkError {
+            network_errors.write(NetworkError {
                 error: format!("Failed to leave queue: {}", e),
                 recoverable: true,
             });

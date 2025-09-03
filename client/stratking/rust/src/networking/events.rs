@@ -1,7 +1,7 @@
+use crate::networking::{GameResult, PlayerProfile};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use crate::networking::{PlayerProfile, GameResult};
+use std::{path::Display, time::Duration};
 
 // UI → Network Events (Requests)
 #[derive(Event)]
@@ -30,6 +30,21 @@ pub struct StartOfflineGameRequested {
 #[derive(Event)]
 pub struct SyncNowRequested;
 
+// WebSocket Connection Events
+#[derive(Event)]
+pub struct ConnectWebSocketRequested {
+    pub jwt_token: String,
+}
+
+#[derive(Event)]
+pub struct DisconnectWebSocketRequested;
+
+// Custom WebSocket Message Event (for sending arbitrary messages)
+#[derive(Event)]
+pub struct SendWebSocketMessageRequested {
+    pub message: serde_json::Value,
+}
+
 // Network → UI Events (Responses)
 #[derive(Event)]
 pub struct LoginCompleted {
@@ -41,7 +56,7 @@ pub struct LoginCompleted {
 #[derive(Event)]
 pub struct LogoutCompleted;
 
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub struct MatchFound {
     pub match_id: u64,
     pub server_host: String,
@@ -56,10 +71,18 @@ pub struct QueueJoined {
 }
 
 #[derive(Event)]
+pub struct QueueJoinResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[derive(Event)]
 pub struct QueueLeft;
 
 #[derive(Event)]
-pub struct ConnectionEstablished;
+pub struct ConnectionEstablished {
+    pub message: String,
+}
 
 #[derive(Event)]
 pub struct ConnectionLost {

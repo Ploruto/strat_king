@@ -18,11 +18,17 @@ impl Plugin for NetworkingPlugin {
             .add_event::<StartOfflineGameRequested>()
             .add_event::<SyncNowRequested>()
             
+            // WebSocket connection events
+            .add_event::<ConnectWebSocketRequested>()
+            .add_event::<DisconnectWebSocketRequested>()
+            .add_event::<SendWebSocketMessageRequested>()
+            
             // Response events
             .add_event::<LoginCompleted>()
             .add_event::<LogoutCompleted>()
             .add_event::<MatchFound>()
             .add_event::<QueueJoined>()
+            .add_event::<QueueJoinResponse>()
             .add_event::<QueueLeft>()
             .add_event::<ConnectionEstablished>()
             .add_event::<ConnectionLost>()
@@ -34,6 +40,7 @@ impl Plugin for NetworkingPlugin {
                 websocket_system,
                 http_system,
                 login_success_system,
+                websocket_connection_system,
                 queue_system,
             ));
     }
