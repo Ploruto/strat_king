@@ -2,6 +2,9 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { IncomingMessage } from 'http'
 import { Secret } from '@adonisjs/core/helpers'
 import Player from '#models/player'
+import MatchmakingQueue from '#models/matchmaking_queue'
+import Match from '#models/match'
+import { ServerManager } from '#services/server_manager'
 
 interface AuthenticatedWebSocket extends WebSocket {
   playerId?: number
@@ -79,10 +82,25 @@ export default class WebSocketService {
           this.handleMessage(ws, data)
         })
 
-        ws.on('close', () => {
+        ws.on('close', async () => {
           if (ws.playerId) {
             this.clients.delete(ws.playerId)
-            console.log(`Player disconnected: ${ws.username} (${ws.playerId})`)
+            
+            // Remove player from matchmaking queue on disconnect
+            try {
+              const deletedCount = await MatchmakingQueue.query()
+                .where('playerId', ws.playerId)
+                .delete()
+              
+              if (deletedCount > 0) {
+                console.log(`Player ${ws.username} (${ws.playerId}) disconnected and removed from queue`)
+              } else {
+                console.log(`Player disconnected: ${ws.username} (${ws.playerId})`)
+              }
+            } catch (error) {
+              console.error(`Error removing player ${ws.playerId} from queue on disconnect:`, error)
+              console.log(`Player disconnected: ${ws.username} (${ws.playerId})`)
+            }
           }
         })
 
@@ -92,20 +110,198 @@ export default class WebSocketService {
     })
   }
 
-  private handleMessage(ws: AuthenticatedWebSocket, data: any) {
+  private async handleMessage(ws: AuthenticatedWebSocket, data: any) {
     try {
       const message = JSON.parse(data.toString())
       console.log(`Message from ${ws.username}:`, message)
 
-      ws.send(JSON.stringify({
-        type: 'echo',
-        data: { received: message }
-      }))
+      switch (message.type) {
+        case 'queue_join':
+          await this.handleQueueJoin(ws, message.data)
+          break
+        case 'queue_leave':
+          await this.handleQueueLeave(ws, message.data)
+          break
+        case 'ping':
+          ws.send(JSON.stringify({ type: 'pong' }))
+          break
+        default:
+          ws.send(JSON.stringify({
+            type: 'error',
+            data: { message: `Unknown message type: ${message.type}` }
+          }))
+      }
     } catch (error) {
       ws.send(JSON.stringify({
         type: 'error',
         data: { message: 'Invalid message format' }
       }))
+    }
+  }
+
+  private async handleQueueJoin(ws: AuthenticatedWebSocket, data: any) {
+    if (!ws.playerId) {
+      ws.send(JSON.stringify({
+        type: 'queue_join_response',
+        data: { success: false, message: 'Not authenticated' }
+      }))
+      return
+    }
+
+    try {
+      // Check if player is already in queue
+      const existingEntry = await MatchmakingQueue.query()
+        .where('playerId', ws.playerId)
+        .where('gameMode', '1v1')
+        .first()
+
+      if (existingEntry) {
+        ws.send(JSON.stringify({
+          type: 'queue_join_response',
+          data: { success: false, message: 'Already in queue' }
+        }))
+        return
+      }
+
+      await MatchmakingQueue.create({
+        playerId: ws.playerId,
+        gameMode: '1v1'
+      })
+
+      ws.send(JSON.stringify({
+        type: 'queue_join_response',
+        data: { success: true, message: 'Joined queue successfully' }
+      }))
+
+      // Check if we have enough players for a match
+      await this.tryCreateMatch()
+
+    } catch (error) {
+      console.error('Error handling queue join:', error)
+      ws.send(JSON.stringify({
+        type: 'queue_join_response',
+        data: { success: false, message: 'Server error' }
+      }))
+    }
+  }
+
+  private async handleQueueLeave(ws: AuthenticatedWebSocket, data: any) {
+    if (!ws.playerId) {
+      ws.send(JSON.stringify({
+        type: 'queue_leave_response',
+        data: { success: false, message: 'Not authenticated' }
+      }))
+      return
+    }
+
+    try {
+      const deletedCount = await MatchmakingQueue.query()
+        .where('playerId', ws.playerId)
+        .where('gameMode', '1v1')
+        .delete()
+
+      if (deletedCount > 0) {
+        ws.send(JSON.stringify({
+          type: 'queue_leave_response',
+          data: { success: true, message: 'Left queue successfully' }
+        }))
+      } else {
+        ws.send(JSON.stringify({
+          type: 'queue_leave_response',
+          data: { success: false, message: 'Not in queue' }
+        }))
+      }
+    } catch (error) {
+      console.error('Error handling queue leave:', error)
+      ws.send(JSON.stringify({
+        type: 'queue_leave_response',
+        data: { success: false, message: 'Server error' }
+      }))
+    }
+  }
+
+  private async tryCreateMatch() {
+    const queueEntries = await MatchmakingQueue.query()
+      .where('gameMode', '1v1')
+      .orderBy('createdAt', 'asc')
+      .limit(2)
+
+    if (queueEntries.length >= 2) {
+      const playerIds = queueEntries.map(entry => entry.playerId)
+      
+      // Ensure we don't match a player against themselves
+      const uniquePlayerIds = [...new Set(playerIds)]
+      if (uniquePlayerIds.length < 2) {
+        console.log('Cannot match - not enough unique players')
+        return
+      }
+
+      const match = await Match.create({
+        playerIds: playerIds,
+        status: 'pending'
+      })
+
+      try {
+        // Spawn game server container
+        const { containerId, port } = await ServerManager.spawnGameServer(
+          match.id,
+          playerIds,
+          match.serverSecret
+        )
+
+        // Update match with server details
+        await match.merge({
+          serverPort: port,
+          authToken: containerId,
+          status: 'spawning'
+        }).save()
+
+        console.log(`🎮 Match ${match.id} server spawning on port ${port}`)
+
+        // Send match found notifications via WebSocket
+        for (const playerId of playerIds) {
+          const client = this.clients.get(playerId)
+          if (client && client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'match_found',
+              data: {
+                matchId: match.id,
+                players: playerIds,
+                status: 'spawning',
+                serverHost: '127.0.0.1',
+                serverPort: port,
+                serverSecret: match.serverSecret,
+                message: 'Game server is starting...'
+              }
+            }))
+          }
+        }
+
+        // Remove these players from the queue
+        await MatchmakingQueue.query()
+          .whereIn('id', queueEntries.map(entry => entry.id))
+          .delete()
+
+      } catch (error) {
+        console.error('Failed to spawn game server:', error)
+
+        // Update match as failed
+        await match.merge({ status: 'failed' }).save()
+
+        // Notify players of failure
+        for (const playerId of playerIds) {
+          const client = this.clients.get(playerId)
+          if (client && client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'match_failed',
+              data: {
+                matchId: match.id,
+                error: 'Failed to start game server'
+              }
+            }))
+          }
+        }
+      }
     }
   }
 

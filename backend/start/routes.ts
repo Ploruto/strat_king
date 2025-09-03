@@ -10,7 +10,6 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 const AuthController = () => import('#controllers/auth_controller')
-const MatchmakingsController = () => import('#controllers/matchmakings_controller')
 const WebhooksController = () => import('#controllers/webhooks_controller')
 
 import Match from '#models/match'
@@ -31,7 +30,6 @@ router.group(() => {
   router.post('/login', [AuthController, 'login'])
 }).prefix('/auth')
 
-router.post('/matchmaking/join', [MatchmakingsController, 'join'])
 
 router.group(() => {
   router.post('/server-ready', [WebhooksController, 'serverReady'])
