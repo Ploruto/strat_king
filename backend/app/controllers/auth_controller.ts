@@ -62,7 +62,7 @@ export default class AuthController {
       data: {
         player_id: player.id,
         username: player.username,
-        token: token.value.release()
+        token: token.value!.release()
       }
     })
   }

@@ -15,16 +15,18 @@ impl Plugin for ExampleButtonPlugin {
 
 fn connect_signals(mut scene_tree: SceneTreeRef, signals: GodotSignals) {
     if let Some(root) = scene_tree.get().get_root() {
-        println!("scanning scene root");
         if let Some(button) = root.try_get_node_as::<Button>("Node2D/ExampleButton") {
-            println!("found button");
+            let mut handle = GodotNodeHandle::from_instance_id(button.instance_id());
+            signals.connect(&mut handle, "pressed");
+        }
+        if let Some(button) = root.try_get_node_as::<Button>("Node2D/ExampleButton2") {
             let mut handle = GodotNodeHandle::from_instance_id(button.instance_id());
             signals.connect(&mut handle, "pressed");
         }
     }
 }
 
-fn handle_signals(mut signal_events: EventReader<GodotSignal>) {
+fn handle_signals(mut signal_events: EventReader<GodotSignal>, mut scene_tree: SceneTreeRef) {
     for signal in signal_events.read() {
         match signal.name.as_str() {
             "pressed" => {
