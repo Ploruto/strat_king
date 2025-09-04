@@ -12,7 +12,7 @@ use lightyear::{
         MessageSender, PeerAddr, ReplicationReceiver, UdpIo,
     },
 };
-use shared::{Channel1, PingMessage, SERVER_ADDR};
+use shared::{GameNetworkChannel, PingMessage, SharedPlugin, SERVER_ADDR};
 
 use crate::{
     example_button_binding::TestingNetworkPlugin,
@@ -20,16 +20,19 @@ use crate::{
 };
 
 pub mod example_button_binding;
+pub mod gameplay;
 pub mod networking;
 
 #[bevy_app]
 #[no_mangle]
 fn android_main(app: &mut App) {
+    app.add_plugins(SharedPlugin);
     // GodotDefaultPlugins provides all standard godot-bevy functionality
     app.add_plugins(GodotDefaultPlugins);
     app.add_plugins(TokioTasksPlugin::default());
     app.add_plugins(TestingNetworkPlugin::default());
     app.add_plugins(NetworkingPlugin);
+    app.add_plugins(gameplay::example::GameplayExamplePlugin::default());
 
     app.add_systems(Update, (handle_match_found, send_ping, handle_pong));
 }
@@ -51,13 +54,10 @@ fn handle_match_found(
                 .split('.')
                 .map(|s| s.parse().unwrap())
                 .collect();
-            let server_addr = SocketAddrV4::new(
-                Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3]),
-                game.server_port,
-            );
+            let server_addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 7777); //game.server_port);
             let auth = Authentication::Manual {
                 server_addr: std::net::SocketAddr::V4(server_addr),
-                client_id: 0,
+                client_id: current_player.user_id,
                 private_key: Key::default(),
                 protocol_id: 0,
             };
@@ -66,11 +66,8 @@ fn handle_match_found(
                 .spawn((
                     Client::default(),
                     LocalAddr(
-                        SocketAddrV4::new(
-                            Ipv4Addr::new(127, 0, 0, 1),
-                            current_player.user_id as u16,
-                        )
-                        .into(),
+                        SocketAddrV4::new(Ipv4Addr::LOCALHOST, current_player.user_id as u16)
+                            .into(),
                     ),
                     PeerAddr(std::net::SocketAddr::V4(server_addr)),
                     Link::new(None),
@@ -101,7 +98,7 @@ fn send_ping(
     if timer.just_finished() {
         for mut sender in sender.iter_mut() {
             let ping = PingMessage("Hello from client!".to_string());
-            sender.send::<Channel1>(ping);
+            sender.send::<GameNetworkChannel>(ping);
             info!("Sent ping message");
         }
     }

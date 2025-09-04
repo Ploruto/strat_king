@@ -27,7 +27,7 @@ export default class WebhooksController {
             type: 'server_ready',
             data: {
               matchId: match.id,
-              serverAddress: 'localhost',
+              serverAddress: '0.0.0.0',
               serverPort: match.serverPort || 7777,
               serverSecret: match.serverSecret
             }

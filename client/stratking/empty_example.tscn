@@ -32,3 +32,9 @@ offset_top = 136.0
 offset_right = 218.0
 offset_bottom = 167.0
 text = "Join Queue"
+
+[node name="PlayerNode" type="PlayerNode" parent="UI"]
+
+[node name="Polygon2D" type="Polygon2D" parent="UI/PlayerNode"]
+offset = Vector2(6.77, 500)
+polygon = PackedVector2Array(-5, 2, 6, 2, 6, -5, -5, -5)

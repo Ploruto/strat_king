@@ -15,11 +15,12 @@ export class ServerManager {
     try {
       // Spawn Docker container with environment variables
       const dockerCommand = [
-        'run', '-d', '-p', '0:7777/udp', // -d for detached, explicit UDP port mapping
+        'run', '-d', 
+        '--network', 'host', // Use host networking - simplest possible
         '-e', `SERVER_SECRET=${serverSecret}`,
         '-e', `MATCH_ID=${matchId}`,
         '-e', `EXPECTED_PLAYERS=${JSON.stringify(playerIds)}`,
-        '-e', `BACKEND_URL=http://host.docker.internal:3333`,
+        '-e', `BACKEND_URL=http://localhost:3333`, // localhost works with host networking
         '-e', `SERVER_PORT=7777`,
         'strat-king-server:latest'
       ]
@@ -30,17 +31,17 @@ export class ServerManager {
       const { stdout: containerId } = await execAsync(`docker ${dockerCommand.join(' ')}`)
       const cleanContainerId = containerId.trim()
 
-      // Get the assigned port (UDP)
-      const { stdout: portOutput } = await execAsync(
-        `docker port ${cleanContainerId} 7777/udp`
-      )
-
-      // Extract port number from output like "0.0.0.0:32768"
-      const portMatch = portOutput.match(/:(\d+)/)
-      const assignedPort = portMatch ? parseInt(portMatch[1]) : 7777
+      // With host networking, container uses port 7777 directly on host
+      const assignedPort = 7777
 
       console.log(`✅ Container spawned: ${cleanContainerId.substring(0, 12)}`)
-      console.log(`🔌 Port mapped: 7777 -> ${assignedPort}`)
+      console.log(`🔌 Using host networking - port: ${assignedPort}`)
+
+      // Check if container is actually running
+      const { stdout: containerStatus } = await execAsync(
+        `docker ps --filter id=${cleanContainerId} --format "{{.Status}}"`
+      )
+      console.log(`🏃 Container status: ${containerStatus.trim()}`)
 
       return {
         containerId: cleanContainerId,

@@ -268,7 +268,7 @@ export default class WebSocketService {
                 matchId: match.id,
                 players: playerIds,
                 status: 'spawning',
-                serverHost: '127.0.0.1',
+                serverHost: '0.0.0.0',
                 serverPort: port,
                 serverSecret: match.serverSecret,
                 message: 'Game server is starting...'

@@ -10,8 +10,7 @@ use std::env;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
 
-use crate::map_init::{CurrentMap, MapInitPlugin};
-use shared::gameplay::map::MapDefinition;
+use crate::map_init::MapInitPlugin;
 
 mod map_init;
 
@@ -25,7 +24,7 @@ pub struct ServerConfig {
     pub backend_url: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, States, Hash, Eq)]
 pub enum GameState {
     WaitingForPlayers,
     MatchStarting,
@@ -79,7 +78,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("🚀 Starting Strategy King Game Server");
     println!("Match ID: {}", server_config.match_id);
-    println!("Server listening on: {}", server_config.server_addr);
+    println!(
+        "Server listening on: {}, port: {}",
+        server_config.server_addr, server_config.server_port
+    );
     println!("Expected players: {:?}", server_config.expected_players);
     println!("Backend URL: {}", server_config.backend_url);
 
@@ -91,114 +93,37 @@ fn main() -> anyhow::Result<()> {
 
     // Notify backend that server is ready (spawn blocking task)
     let config_clone = server_config.clone();
-    std::thread::spawn(move || {
-        // Use blocking HTTP client instead of async
-        let client = reqwest::blocking::Client::new();
-        let webhook_data = serde_json::json!({
-            "match_id": config_clone.match_id
-        });
+    // std::thread::spawn(move || {
+    //     // Use blocking HTTP client instead of async
+    //     let client = reqwest::blocking::Client::new();
+    //     let webhook_data = serde_json::json!({
+    //         "match_id": config_clone.match_id
+    //     });
 
-        match client
-            .post(&format!(
-                "{}/webhooks/server-ready",
-                config_clone.backend_url
-            ))
-            .json(&webhook_data)
-            .send()
-        {
-            Ok(response) => {
-                if response.status().is_success() {
-                    println!("✅ Successfully notified backend that server is ready");
-                } else {
-                    eprintln!("⚠️ Failed to notify backend: {}", response.status());
-                }
-            }
-            Err(e) => eprintln!("Failed to notify backend: {}", e),
-        }
-    });
+    //     match client
+    //         .post(&format!(
+    //             "{}/webhooks/server-ready",
+    //             config_clone.backend_url
+    //         ))
+    //         .json(&webhook_data)
+    //         .send()
+    //     {
+    //         Ok(response) => {
+    //             if response.status().is_success() {
+    //                 println!("✅ Successfully notified backend that server is ready");
+    //             } else {
+    //                 eprintln!("⚠️ Failed to notify backend: {}", response.status());
+    //             }
+    //         }
+    //         Err(e) => eprintln!("Failed to notify backend: {}", e),
+    //     }
+    // });
 
     // Run Bevy on main thread
     let mut app = App::new();
 
     app.insert_resource(server_config);
     app.insert_resource(game_state_manager);
-    /* MinimalPlugins:
-    bevy_app:::TaskPoolPlugin,
-        bevy_diagnostic:::FrameCountPlugin,
-        bevy_time:::TimePlugin,
-        bevy_app:::ScheduleRunnerPlugin,
-        #[cfg(feature = "bevy_ci_testing")]
-        bevy_dev_tools::ci_testing:::CiTestingPlugin,
-        */
-
-    /* DefaultPlugins:
-    bevy_app:::PanicHandlerPlugin,
-        #[cfg(feature = "bevy_log")]
-        bevy_log:::LogPlugin,
-        bevy_app:::TaskPoolPlugin,
-        bevy_diagnostic:::FrameCountPlugin,
-        bevy_time:::TimePlugin,
-        bevy_transform:::TransformPlugin,
-        bevy_diagnostic:::DiagnosticsPlugin,
-        bevy_input:::InputPlugin,
-        #[custom(cfg(not(feature = "bevy_window")))]
-        bevy_app:::ScheduleRunnerPlugin,
-        #[cfg(feature = "bevy_window")]
-        bevy_window:::WindowPlugin,
-        #[cfg(feature = "bevy_window")]
-        bevy_a11y:::AccessibilityPlugin,
-        #[cfg(feature = "std")]
-        #[custom(cfg(any(unix, windows)))]
-        bevy_app:::TerminalCtrlCHandlerPlugin,
-        #[cfg(feature = "bevy_asset")]
-        bevy_asset:::AssetPlugin,
-        #[cfg(feature = "bevy_scene")]
-        bevy_scene:::ScenePlugin,
-        #[cfg(feature = "bevy_winit")]
-        bevy_winit:::WinitPlugin,
-        #[cfg(feature = "bevy_render")]
-        bevy_render:::RenderPlugin,
-        // NOTE: Load this after renderer initialization so that it knows about the supported
-        // compressed texture formats.
-        #[cfg(feature = "bevy_render")]
-        bevy_render::texture:::ImagePlugin,
-        #[cfg(feature = "bevy_render")]
-        #[custom(cfg(all(not(target_arch = "wasm32"), feature = "multi_threaded")))]
-        bevy_render::pipelined_rendering:::PipelinedRenderingPlugin,
-        #[cfg(feature = "bevy_core_pipeline")]
-        bevy_core_pipeline:::CorePipelinePlugin,
-        #[cfg(feature = "bevy_sprite")]
-        bevy_sprite:::SpritePlugin,
-        #[cfg(feature = "bevy_text")]
-        bevy_text:::TextPlugin,
-        #[cfg(feature = "bevy_ui")]
-        bevy_ui:::UiPlugin,
-        #[cfg(feature = "bevy_pbr")]
-        bevy_pbr:::PbrPlugin,
-        // NOTE: Load this after renderer initialization so that it knows about the supported
-        // compressed texture formats.
-        #[cfg(feature = "bevy_gltf")]
-        bevy_gltf:::GltfPlugin,
-        #[cfg(feature = "bevy_audio")]
-        bevy_audio:::AudioPlugin,
-        #[cfg(feature = "bevy_gilrs")]
-        bevy_gilrs:::GilrsPlugin,
-        #[cfg(feature = "bevy_animation")]
-        bevy_animation:::AnimationPlugin,
-        #[cfg(feature = "bevy_gizmos")]
-        bevy_gizmos:::GizmoPlugin,
-        #[cfg(feature = "bevy_state")]
-        bevy_state::app:::StatesPlugin,
-        #[cfg(feature = "bevy_dev_tools")]
-        bevy_dev_tools:::DevToolsPlugin,
-        #[cfg(feature = "bevy_ci_testing")]
-        bevy_dev_tools::ci_testing:::CiTestingPlugin,
-        #[plugin_group]
-        #[cfg(feature = "bevy_picking")]
-        bevy_picking:::DefaultPickingPlugins,
-        #[doc(hidden)]
-        :IgnoreAmbiguitiesPlugin,
-        */
 
     app.add_plugins(MinimalPlugins);
     app.add_plugins(AssetPlugin::default());
@@ -222,9 +147,7 @@ pub struct ServerPlugin;
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<MapDefinition>();
-        app.add_plugins(RonAssetPlugin::<MapDefinition>::new(&[".ron"]));
-        app.add_systems(Startup, (startup, load_map_asset));
+        app.add_systems(Startup, startup);
         app.add_systems(Update, start_server);
         app.add_observer(handle_new_client);
         app.add_observer(handle_client_disconnect);
@@ -248,6 +171,7 @@ fn handle_new_client(
 ) {
     let client_id = trigger.target();
     info!("🔌 New client connected: {:?}", client_id);
+    println!("🔌 New client connected: {:?}", client_id);
 
     // TODO: In a real implementation, validate the client's connection
     // using SERVER_SECRET and expected player ID
@@ -351,12 +275,12 @@ fn game_state_manager(
 }
 
 fn startup(mut commands: Commands, config: Res<ServerConfig>) {
-    info!("Setting up server on {:?}", config.server_addr);
+    println!("Setting up server on {:?}", config.server_addr);
     commands.spawn((
         Name::from("GameServer"),
-        Server::default(),  // ← Add Server marker component
+        Server::default(), // ← Add Server marker component
         NetcodeServer::new(NetcodeConfig {
-            protocol_id: 0,  // ← Match client protocol
+            protocol_id: 0, // ← Match client protocol
             ..Default::default()
         }),
         LocalAddr(config.server_addr),
@@ -364,17 +288,15 @@ fn startup(mut commands: Commands, config: Res<ServerConfig>) {
     ));
 }
 
-fn start_server(mut commands: Commands, server_query: Query<Entity, (With<Server>, Without<Started>)>) {
+fn start_server(
+    mut commands: Commands,
+    server_query: Query<Entity, (With<Server>, Without<Started>)>,
+) {
     for server_entity in server_query.iter() {
+        println!("Starting server entity: {:?}", server_entity);
         info!("Starting server entity: {:?}", server_entity);
         commands.trigger_targets(Start, server_entity);
     }
-}
-
-fn load_map_asset(mut commands: Commands, asset_server: Res<AssetServer>) {
-    info!("Loading map asset...");
-    let map_handle: Handle<MapDefinition> = asset_server.load("maps/simple_1v1.map.ron");
-    commands.insert_resource(CurrentMap(map_handle));
 }
 
 fn handle_ping_message(
@@ -386,9 +308,12 @@ fn handle_ping_message(
         for mut receiver in receiver.iter_mut() {
             for message in receiver.receive() {
                 info!("Received ping: {:?}", message);
+                println!("Received ping: {:?}", message);
 
                 let response = PingMessage(format!("Pong! Got: {}", message.0));
-                if let Err(e) = sender.send::<_, Channel1>(&response, server, &NetworkTarget::All) {
+                if let Err(e) =
+                    sender.send::<_, GameNetworkChannel>(&response, server, &NetworkTarget::All)
+                {
                     error!("Failed to send response: {:?}", e);
                 }
             }
