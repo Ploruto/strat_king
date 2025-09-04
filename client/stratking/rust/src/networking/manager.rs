@@ -59,7 +59,7 @@ pub enum SyncAction {
     UpdateSettings(GameSettings),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlayerProfile {
     pub jwt_token: String,
     pub user_id: u64,

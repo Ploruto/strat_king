@@ -1,0 +1,9 @@
+[target.aarch64-linux-android]
+linker = "/home/phaack/Android/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+ar = "/home/phaack/Android/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+
+
+# [env]
+# CC = "/home/phaack/Android/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+# CXX = "/home/phaack/Android/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++"
+# AR = "/home/phaack/Android/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"

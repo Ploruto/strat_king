@@ -11,13 +11,13 @@ config_version=5
 [application]
 
 config/name="StratKing"
-run/main_scene="res://empty_example.tscn"
+run/main_scene="uid://cav6f5yg816j7"
 config/features=PackedStringArray("4.4", "Mobile")
 config/icon="res://icon.svg"
 
 [autoload]
 
-BevyAppSingleton="*res://addons/godot-bevy/bevy_app_singleton.tscn"
+BevyAppSingleton="*res://bevy_app_singleton.tscn"
 
 [editor_plugins]
 

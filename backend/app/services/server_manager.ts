@@ -26,7 +26,7 @@ export class ServerManager {
 
       console.log(`🐳 Spawning container for match ${matchId}...`)
       console.log(`Players: [${playerIds.join(', ')}]`)
-      
+
       const { stdout: containerId } = await execAsync(`docker ${dockerCommand.join(' ')}`)
       const cleanContainerId = containerId.trim()
 
@@ -34,7 +34,7 @@ export class ServerManager {
       const { stdout: portOutput } = await execAsync(
         `docker port ${cleanContainerId} 7777/udp`
       )
-      
+
       // Extract port number from output like "0.0.0.0:32768"
       const portMatch = portOutput.match(/:(\d+)/)
       const assignedPort = portMatch ? parseInt(portMatch[1]) : 7777
@@ -58,13 +58,13 @@ export class ServerManager {
   static async stopGameServer(containerId: string): Promise<void> {
     try {
       console.log(`🛑 Stopping container: ${containerId.substring(0, 12)}`)
-      
+
       // Stop the container gracefully
       await execAsync(`docker stop ${containerId}`)
-      
+
       // Remove the container
       await execAsync(`docker rm ${containerId}`)
-      
+
       console.log(`✅ Container cleaned up: ${containerId.substring(0, 12)}`)
     } catch (error) {
       console.error('⚠️ Failed to stop game server:', error)
