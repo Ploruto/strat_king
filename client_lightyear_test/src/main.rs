@@ -11,6 +11,7 @@ const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST),
 fn main() {
     let mut app = App::new();
 
+    // app.add_plugins(MinimalPlugins);
     app.add_plugins(DefaultPlugins);
     app.add_plugins(ClientPlugins {
         tick_duration: core::time::Duration::from_secs_f64(1.0 / FIXED_TIMESTEP_HZ),
@@ -32,16 +33,13 @@ impl Plugin for ClientPlugin {
 }
 
 fn startup(mut commands: Commands) {
-    info!("Starting client, connecting to {:?}", SERVER_ADDR);
-    commands.spawn(Camera2d);
-
     let addr = Ipv4Addr::new(0, 0, 0, 0);
 
     let auth = Authentication::Manual {
         server_addr: SocketAddr::V4(SocketAddrV4::new(addr, 7777)),
         client_id: 0,
         private_key: Key::default(),
-        protocol_id: 0,
+        protocol_id: 15,
     };
 
     let client = commands

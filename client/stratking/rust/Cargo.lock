@@ -2962,8 +2962,6 @@ dependencies = [
 [[package]]
 name = "godot-bevy"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee3f85e97fc776e371f3c107310af36ab6b2a45212b27339c79422e8ff9150fa"
 dependencies = [
  "bevy",
  "chrono",
@@ -2981,8 +2979,6 @@ dependencies = [
 [[package]]
 name = "godot-bevy-macros"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65de0cdfba8300acdd9ca71ac5fd53ed816c3b9912001915fb04db66198dccb9"
 dependencies = [
  "proc-macro2",
  "quote",

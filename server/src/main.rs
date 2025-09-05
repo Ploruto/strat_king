@@ -280,7 +280,7 @@ fn startup(mut commands: Commands, config: Res<ServerConfig>) {
         Name::from("GameServer"),
         Server::default(), // ← Add Server marker component
         NetcodeServer::new(NetcodeConfig {
-            protocol_id: 0, // ← Match client protocol
+            protocol_id: 15, // ← Match client protocol
             ..Default::default()
         }),
         LocalAddr(config.server_addr),
