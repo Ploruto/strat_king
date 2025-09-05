@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
 
     let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), server_port);
 
-    let expected_players_str =
+    /* let expected_players_str =
         env::var("EXPECTED_PLAYERS").expect("EXPECTED_PLAYERS environment variable is required");
     let expected_players: Vec<u32> = serde_json::from_str(&expected_players_str)
         .expect("EXPECTED_PLAYERS must be a valid JSON array of player IDs");
@@ -83,7 +83,7 @@ fn main() -> anyhow::Result<()> {
         server_config.server_addr, server_config.server_port
     );
     println!("Expected players: {:?}", server_config.expected_players);
-    println!("Backend URL: {}", server_config.backend_url);
+    println!("Backend URL: {}", server_config.backend_url); */
 
     // Initialize game state manager
     let game_state_manager = GameStateManager {
@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     // Notify backend that server is ready (spawn blocking task)
-    let config_clone = server_config.clone();
+    // let config_clone = server_config.clone();
     // std::thread::spawn(move || {
     //     // Use blocking HTTP client instead of async
     //     let client = reqwest::blocking::Client::new();
@@ -121,6 +121,16 @@ fn main() -> anyhow::Result<()> {
 
     // Run Bevy on main thread
     let mut app = App::new();
+
+    // debugging:
+    let server_config = ServerConfig {
+        server_secret: "HelloWorld".to_string(),
+        match_id: 1,
+        expected_players: vec![],
+        server_port,
+        server_addr,
+        backend_url: "".to_string(),
+    };
 
     app.insert_resource(server_config);
     app.insert_resource(game_state_manager);
