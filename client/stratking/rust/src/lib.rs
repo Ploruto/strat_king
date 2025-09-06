@@ -16,17 +16,17 @@ mod client_logic;
 
 #[bevy_app]
 // #[no_mangle]
-pub fn android_main(app: &mut App) {
-    // Android-specific plugins with disabled rendering
+pub fn bevy_app(app: &mut App) {
+    // Disable rendering plugins for Godot integration (no RenderDevice available)
     app.add_plugins(
         DefaultPlugins
             .build()
             .disable::<bevy::render::RenderPlugin>()
-            // .disable::<bevy::winit::WinitPlugin>()
             .disable::<bevy::pbr::PbrPlugin>()
             .disable::<bevy::sprite::SpritePlugin>()
             .disable::<bevy::ui::UiPlugin>()
-            .disable::<bevy::text::TextPlugin>(),
+            .disable::<bevy::text::TextPlugin>()
+            .disable::<bevy::winit::WinitPlugin>(),
     );
 
     // Use shared client logic

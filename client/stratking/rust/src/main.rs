@@ -5,7 +5,6 @@ mod client_logic;
 fn main() {
     let mut app = App::new();
 
-    // Desktop-specific plugins with full rendering
     app.add_plugins(DefaultPlugins);
 
     // Use shared client logic
