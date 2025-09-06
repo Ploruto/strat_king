@@ -12,7 +12,7 @@ pub struct MapInitPlugin;
 
 impl Plugin for MapInitPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MatchStarting), spawn_map);
+        // app.add_systems(OnEnter(GameState::GameRunning), spawn_map);
     }
 }
 

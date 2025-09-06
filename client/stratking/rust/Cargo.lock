@@ -6356,6 +6356,7 @@ checksum = "7ef6b00f8fe8eaaaff22cb9b70822a48c1a5d772bc682c202a57c0b438175845"
 name = "strat_king"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy-tokio-tasks",
  "futures-util",

@@ -76,7 +76,6 @@ fn main() -> anyhow::Result<()> {
             .unwrap_or_else(|_| "http://host.docker.internal:3333".to_string()),
     };
 
-    println!("🚀 Starting Strategy King Game Server");
     println!("Match ID: {}", server_config.match_id);
     println!(
         "Server listening on: {}, port: {}",
@@ -145,8 +144,6 @@ fn main() -> anyhow::Result<()> {
     app.add_plugins(ServerPlugin);
 
     app.run();
-
-    println!("✅ Server shutdown complete");
     Ok(())
 }
 
@@ -180,7 +177,6 @@ fn handle_new_client(
     game_state: Res<GameStateManager>,
 ) {
     let client_id = trigger.target();
-    info!("🔌 New client connected: {:?}", client_id);
     println!("🔌 New client connected: {:?}", client_id);
 
     // TODO: In a real implementation, validate the client's connection
@@ -200,7 +196,7 @@ fn handle_new_client(
     if let Ok(mut connected) = game_state_clone.lock() {
         let con_len = connected.len();
         // For now, just track connection count - in real implementation
-        // you'd extract player ID from connection authentication
+        // we'd extract player ID from connection authentication
         if con_len < expected_players.len() {
             connected.push(expected_players[con_len]);
             println!(

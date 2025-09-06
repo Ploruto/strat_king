@@ -6,21 +6,13 @@ use lightyear::prelude::*;
 use shared::*;
 use std::net::SocketAddrV4;
 
-const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 4000);
-
-fn main() {
-    let mut app = App::new();
-
-    // app.add_plugins(MinimalPlugins);
-    app.add_plugins(DefaultPlugins);
+pub fn setup_client_app(app: &mut App) {
     app.add_plugins(ClientPlugins {
         tick_duration: core::time::Duration::from_secs_f64(1.0 / FIXED_TIMESTEP_HZ),
     });
-
+    
     app.add_plugins(SharedPlugin);
     app.add_plugins(ClientPlugin);
-
-    app.run();
 }
 
 pub struct ClientPlugin;
@@ -31,6 +23,8 @@ impl Plugin for ClientPlugin {
         app.add_systems(Update, (send_ping, handle_pong));
     }
 }
+
+const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 4000);
 
 fn startup(mut commands: Commands) {
     let addr = Ipv4Addr::new(0, 0, 0, 0);

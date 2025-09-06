@@ -66,6 +66,12 @@ impl TowerGenerationTimer {
     }
 }
 
+fn debug_tower_print(q_towers: Query<&Tower>) {
+    for tower in q_towers.iter() {
+        println!("tower node id: {}, mana: {}", tower.node_id, tower.mana);
+    }
+}
+
 fn generate_mana_for_captured_towers(
     time: Res<Time>,
     mut gen_timer: Query<&mut TowerGenerationTimer>,
@@ -109,6 +115,7 @@ impl Plugin for TowerPlugin {
             Update,
             generate_mana_for_captured_towers.run_if(run_if_game_running),
         );
+        app.add_systems(FixedUpdate, debug_tower_print);
         app.register_component::<Tower>();
         app.register_component::<TowerStats>();
         app.register_component::<BaseTowerMarker>();

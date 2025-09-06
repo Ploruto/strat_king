@@ -1,13 +1,18 @@
 [package]
 name = "strat_king"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
+[[bin]]
+name = "strat_king"
+path = "src/main.rs"
+
 [dependencies]
-bevy = { version = "0.16", default-features = false, features = ["bevy_state"] }
+anyhow = "1.0.99"
+bevy = { version = "0.16.1", features = ["bevy_render", "bevy_core_pipeline", "bevy_winit", "bevy_window", "bevy_state"] }
 bevy-tokio-tasks = { version = "0.16", default-features = false }
 futures-util = "0.3.31"
 godot = "0.3"

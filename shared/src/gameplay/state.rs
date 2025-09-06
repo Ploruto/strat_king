@@ -14,7 +14,7 @@ pub enum GameState {
 pub struct CurrentGameState(pub GameState);
 
 pub fn run_if_game_running(game_state: Query<&CurrentGameState>) -> bool {
-    let Ok(state) = game_state.get_single() else {
+    let Ok(state) = game_state.single() else {
         error!("Run_if_game_running called before CurrentGameState exists");
         return false;
     };
@@ -22,6 +22,7 @@ pub fn run_if_game_running(game_state: Query<&CurrentGameState>) -> bool {
 }
 
 fn setup_game_state(mut commands: Commands) {
+    println!("Set game State!");
     commands.spawn(CurrentGameState(GameState::Running));
 }
 
